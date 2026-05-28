@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>Vijay ERP — Safe CSV Importer v2.1</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#f1f5f9;--w:#fff;--blue:#1d4ed8;--grn:#16a34a;--red:#dc2626;
+  --gold:#b45309;--ink:#0f172a;--ink2:#475569;--ink3:#94a3b8;--bdr:#e2e8f0;
+  --r:8px;--r2:12px;
+}
+html,body{min-height:100vh;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif;font-size:14px}
+.wrap{max-width:720px;margin:0 auto;padding:20px 14px 40px}
+/* HEADER */
+.page-hdr{text-align:center;margin-bottom:22px}
+.pg-badge{display:inline-flex;background:#eff6ff;border:1px solid #bfdbfe;color:var(--blue);border-radius:20px;padding:4px 14px;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px}
+.pg-h1{font-size:26px;font-weight:800;margin-bottom:4px}
+.pg-h1 span{color:var(--blue)}
+.pg-sub{font-size:12px;color:var(--ink3)}
+/* CARD */
+.card{background:var(--w);border-radius:var(--r2);padding:14px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.07);border:1px solid var(--bdr)}
+.ctitle{font-size:10px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:1.5px;padding-bottom:9px;margin-bottom:11px;border-bottom:1px solid var(--bdr)}
+/* STATUS CARD */
+.status-card{background:var(--w);border-radius:var(--r2);padding:11px 14px;margin-bottom:12px;display:flex;align-items:center;gap:8px;box-shadow:0 1px 3px rgba(0,0,0,.07);border:1px solid var(--bdr)}
+.s-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;transition:background .3s}
+.s-dot.ok{background:#22c55e;box-shadow:0 0 5px #22c55e}
+.s-dot.warn{background:#f59e0b;animation:pulse .8s infinite}
+.s-dot.err{background:#ef4444}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.s-msg{font-size:12px;font-weight:600;flex:1}
+/* FORMAT */
+.col-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:5px}
+@media(min-width:480px){.col-grid{grid-template-columns:repeat(4,1fr)}}
+.cpill{background:#f8fafc;border:1px solid var(--bdr);border-radius:6px;padding:5px 8px;font-size:11px}
+.cpill.req{border-color:#bfdbfe;background:#eff6ff}
+.cp-n{color:var(--blue);font-family:monospace;font-weight:700}
+.cp-t{color:var(--ink3);font-size:9px;margin-top:1px}
+.sample-code{background:#0f172a;border-radius:var(--r);padding:12px;font-size:10px;font-family:monospace;color:#4ade80;overflow-x:auto;white-space:pre;margin-top:10px;line-height:1.7}
+.dl-btn{display:inline-flex;align-items:center;gap:5px;background:#f0fdf4;border:1px solid #86efac;color:var(--grn);border-radius:6px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;margin-top:10px;font-family:inherit}
+/* DROP ZONE */
+.dz{border:2px dashed var(--bdr);border-radius:var(--r2);padding:32px 16px;text-align:center;background:var(--w);position:relative;cursor:pointer;transition:all .2s;margin-bottom:12px}
+.dz.hover{border-color:var(--blue);background:#eff6ff}
+.dz.has{border-color:var(--grn);background:#f0fdf4;border-style:solid}
+.dz input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.dz-ico{font-size:28px;margin-bottom:6px}
+.dz-t{font-size:14px;font-weight:700;margin-bottom:3px}
+.dz-s{font-size:11px;color:var(--ink3)}
+.dz-m{font-size:11px;color:var(--grn);font-family:monospace;margin-top:6px;display:none}
+/* OPTIONS */
+.opts-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.opt{background:var(--w);border:1.5px solid var(--bdr);border-radius:var(--r);padding:10px;display:flex;align-items:flex-start;gap:8px;cursor:pointer}
+.opt input[type=checkbox]{width:16px;height:16px;accent-color:var(--blue);flex-shrink:0;margin-top:1px}
+.opt-l{font-size:12px;font-weight:700}
+.opt-s{font-size:10px;color:var(--ink3);margin-top:1px}
+/* IMPORT BTN */
+.imp-btn{width:100%;padding:14px;background:var(--blue);border:none;border-radius:var(--r);color:#fff;font-size:15px;font-weight:800;cursor:pointer;margin-bottom:12px;font-family:inherit;transition:opacity .2s}
+.imp-btn:disabled{opacity:.35;cursor:not-allowed}
+/* PROGRESS */
+.prog{background:var(--w);border-radius:var(--r2);padding:14px;margin-bottom:12px;display:none;box-shadow:0 1px 3px rgba(0,0,0,.07);border:1px solid var(--bdr)}
+.prog-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.prog-title{font-size:12px;font-weight:700}
+.prog-pct{font-size:13px;font-weight:800;color:var(--blue);font-family:monospace}
+.prog-bar{height:6px;background:#e2e8f0;border-radius:3px;overflow:hidden;margin-bottom:10px}
+.prog-fill{height:100%;background:linear-gradient(90deg,var(--blue),#6366f1);border-radius:3px;transition:width .35s;width:0}
+.step-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px}
+.sbox{background:#f8fafc;border-radius:6px;padding:8px;text-align:center}
+.sbox-l{font-size:9px;color:var(--ink3);text-transform:uppercase;letter-spacing:1px;margin-bottom:2px}
+.sbox-v{font-size:20px;font-weight:800;font-family:monospace}
+.sv-ok{color:var(--grn)}.sv-sk{color:var(--gold)}.sv-er{color:var(--red)}
+/* DEBUG CONSOLE */
+.dbg-console{background:#0a0f1e;border-radius:var(--r);padding:10px;max-height:200px;overflow-y:auto;font-size:11px;font-family:'SF Mono','Fira Code',monospace;line-height:1.7}
+.dbg-console::-webkit-scrollbar{width:3px}
+.dbg-console::-webkit-scrollbar-thumb{background:#334155;border-radius:2px}
+.dl{padding:1px 0}
+.dl-ok{color:#4ade80}.dl-err{color:#f87171}.dl-info{color:#60a5fa}.dl-warn{color:#fbbf24}.dl-data{color:#a78bfa}
+/* RESULTS */
+.res{display:none}
+.rb{border-radius:var(--r2);padding:16px;text-align:center;margin-bottom:12px}
+.rb-ok{background:#f0fdf4;border:1.5px solid #86efac}
+.rb-partial{background:#fffbeb;border:1.5px solid #fde68a}
+.rb-fail{background:#fef2f2;border:1.5px solid #fca5a5}
+.rb-ico{font-size:28px;margin-bottom:6px}
+.rb-t{font-size:18px;font-weight:800}
+.rb-s{font-size:12px;color:var(--ink2);margin-top:4px}
+.rstats{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px}
+@media(min-width:440px){.rstats{grid-template-columns:repeat(4,1fr)}}
+.rsc{background:var(--w);border-radius:var(--r2);padding:12px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.07)}
+.rsc-n{font-size:22px;font-weight:800;font-family:monospace}
+.rsc-l{font-size:10px;color:var(--ink3);text-transform:uppercase;letter-spacing:1px;margin-top:3px}
+.errtbl{background:var(--w);border:1.5px solid #fca5a5;border-radius:var(--r2);overflow:hidden;margin-bottom:12px;display:none}
+.etbl-hdr{background:#fef2f2;padding:9px 14px;font-size:11px;font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:1px}
+.erow{padding:9px 14px;border-bottom:1px solid var(--bdr);font-size:12px}
+.erow:last-child{border-bottom:none}
+.erow-top{display:flex;gap:10px}
+.er-rn{color:var(--ink3);font-family:monospace;min-width:50px}
+.er-msg{color:var(--red);font-weight:700}
+.er-dat{font-size:11px;color:var(--ink3);margin-top:2px;font-family:monospace}
+.act-row{display:flex;gap:8px;flex-wrap:wrap}
+.act-btn{flex:1;padding:11px;border-radius:var(--r);font-size:13px;font-weight:700;cursor:pointer;border:none;min-width:100px;font-family:inherit;transition:opacity .15s}
+.act-btn:hover{opacity:.85}
+.ab-re{background:#f8fafc;border:1px solid var(--bdr);color:var(--ink)}
+.ab-dl{background:#fef2f2;border:1.5px solid #fca5a5;color:var(--red)}
+.ab-db{background:var(--blue);color:#fff}
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .5s linear infinite;vertical-align:middle;margin-right:4px}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- HEADER -->
+  <div class="page-hdr">
+    <div class="pg-badge">📥 Safe Importer v2.1 — Sequential Mode</div>
+    <h1 class="pg-h1">Vijay ERP <span>CSV Import</span></h1>
+    <p class="pg-sub">Safe sequential import · No postMessage · JSON-safe only · Full debug console</p>
+  </div>
+
+  <!-- DB STATUS -->
+  <div class="status-card">
+    <div class="s-dot warn" id="s-dot"></div>
+    <span class="s-msg" id="s-msg">Connecting to database...</span>
+    <button onclick="checkDB()" style="background:#eff6ff;border:1px solid #bfdbfe;color:var(--blue);border-radius:6px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer">Reconnect</button>
+  </div>
+
+  <!-- CSV FORMAT GUIDE -->
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;margin-bottom:0" onclick="toggleFmt()">
+      <div class="ctitle" style="border:none;padding:0;margin:0">📋 Frozen CSV Format (20 columns)</div>
+      <span id="fmt-tog" style="font-size:11px;color:var(--blue);font-weight:700;flex-shrink:0;margin-left:8px">Show ▾</span>
+    </div>
+    <div id="fmt-body" style="display:none;margin-top:12px">
+      <div class="col-grid">
+        <div class="cpill req"><div class="cp-n">family_name*</div><div class="cp-t">HALDI POWDER</div></div>
+        <div class="cpill req"><div class="cp-n">brand*</div><div class="cp-t">MDH / Tata</div></div>
+        <div class="cpill req"><div class="cp-n">category*</div><div class="cp-t">Dal / Masala</div></div>
+        <div class="cpill"><div class="cp-n">variant_name</div><div class="cp-t">1KG Pack</div></div>
+        <div class="cpill"><div class="cp-n">pack_size</div><div class="cp-t">1KG / 500GM</div></div>
+        <div class="cpill"><div class="cp-n">pack_type</div><div class="cp-t">POUCH/BAG/BOTTLE</div></div>
+        <div class="cpill"><div class="cp-n">bulk_pack</div><div class="cp-t">25 (kg per bag)</div></div>
+        <div class="cpill"><div class="cp-n">bulk_pack_size</div><div class="cp-t">25KG</div></div>
+        <div class="cpill"><div class="cp-n">loose_allowed</div><div class="cp-t">YES / NO</div></div>
+        <div class="cpill"><div class="cp-n">reorder_unit</div><div class="cp-t">KG/PKT/Ltr</div></div>
+        <div class="cpill"><div class="cp-n">reorder_mode</div><div class="cp-t">BAG/PCS/KG</div></div>
+        <div class="cpill"><div class="cp-n">barcode_type</div><div class="cp-t">INTERNAL/BRAND</div></div>
+        <div class="cpill"><div class="cp-n">min_stock</div><div class="cp-t">100</div></div>
+        <div class="cpill"><div class="cp-n">cost_price</div><div class="cp-t">45.00</div></div>
+        <div class="cpill"><div class="cp-n">sale_price</div><div class="cp-t">55.00</div></div>
+        <div class="cpill"><div class="cp-n">barcode</div><div class="cp-t">8901234567890</div></div>
+        <div class="cpill"><div class="cp-n">item_id</div><div class="cp-t">VTC-2001</div></div>
+        <div class="cpill"><div class="cp-n">stock_4no</div><div class="cp-t">212 (total KG)</div></div>
+        <div class="cpill"><div class="cp-n">stock_50no</div><div class="cp-t">80</div></div>
+        <div class="cpill"><div class="cp-n">stock_w3</div><div class="cp-t">0</div></div>
+      </div>
+      <div style="margin-top:12px;display:flex;gap:16px;font-size:11px;flex-wrap:wrap">
+        <div><strong style="color:var(--ink2)">SKU Format:</strong> <span style="font-family:monospace;color:var(--blue)">BRAND-FAMILY-SIZE-PACKTYPE</span></div>
+        <div style="color:var(--ink3)">MDH-HALDI-100G-P &nbsp;·&nbsp; TATA-CHANA-1K-B &nbsp;·&nbsp; FORTUN-OIL-5L-J</div>
+      </div>
+      <div style="margin-top:8px;font-size:11px;color:var(--ink2)">
+        <strong>Bag display:</strong> stock_4no=212, bulk_pack=25 → <span style="font-family:monospace">212 KG = 8 Bags + 12KG</span>
+      </div>
+      <div class="sample-code">family_name,brand,category,variant_name,pack_size,pack_type,bulk_pack,bulk_pack_size,loose_allowed,reorder_unit,reorder_mode,barcode_type,min_stock,cost_price,sale_price,barcode,item_id,stock_4no,stock_50no,stock_w3
+CHANA DAL,Tata,Dal,1KG Pack,1KG,POUCH,25,25KG,YES,KG,BAG,INTERNAL,100,45,55,,VTC-2001,212,80,50
+HALDI POWDER,MDH,Masala,100GM Pack,100GM,POUCH,1,1,NO,PKT,PCS,BRAND,50,18,25,8901234500001,VTC-2030,0,0,0
+SUNFLOWER OIL,Fortune,Oil,5 Ltr,5LTR,JAR,15,15LTR,NO,Ltr,PCS,BRAND,20,420,490,,VTC-3002,30,15,0</div>
+      <button class="dl-btn" onclick="dlSample()">⬇ Download 20-Row Sample CSV</button>
+    </div>
+  </div>
+
+  <!-- UPLOAD -->
+  <div class="dz" id="dz"
+    ondragover="event.preventDefault();this.classList.add('hover')"
+    ondragleave="this.classList.remove('hover')"
+    ondrop="handleDrop(event)">
+    <input type="file" id="fInput" accept=".csv,.txt" onchange="handleFile(this)">
+    <div class="dz-ico">📂</div>
+    <div class="dz-t" id="dz-t">Drop CSV file here or tap to browse</div>
+    <div class="dz-s">Accepts .csv or .txt · Up to 10MB</div>
+    <div class="dz-m" id="dz-m"></div>
+  </div>
+
+  <!-- OPTIONS -->
+  <div class="opts-grid">
+    <label class="opt"><input type="checkbox" id="o-dup" checked><div><div class="opt-l">Skip Duplicates</div><div class="opt-s">Don't re-import existing variants</div></div></label>
+    <label class="opt"><input type="checkbox" id="o-sku" checked><div><div class="opt-l">Auto SKU</div><div class="opt-s">BRAND-FAMILY-SIZE-TYPE format</div></div></label>
+    <label class="opt"><input type="checkbox" id="o-stock" checked><div><div class="opt-l">Import Opening Stock</div><div class="opt-s">stock_4no / 50no / w3</div></div></label>
+    <label class="opt"><input type="checkbox" id="o-fam" checked><div><div class="opt-l">Auto Create Families</div><div class="opt-s">product_families table</div></div></label>
+  </div>
+
+  <button class="imp-btn" id="ibtn" disabled onclick="startImport()">📥 Select a CSV File First</button>
+
+  <!-- PROGRESS + DEBUG CONSOLE -->
+  <div class="prog" id="prog">
+    <div class="prog-top">
+      <div class="prog-title" id="prog-title">Preparing...</div>
+      <div class="prog-pct" id="prog-pct">0%</div>
+    </div>
+    <div class="prog-bar"><div class="prog-fill" id="prog-fill"></div></div>
+    <div class="step-grid">
+      <div class="sbox"><div class="sbox-l">Processed</div><div class="sbox-v" id="sp-done">0</div></div>
+      <div class="sbox"><div class="sbox-l">Inserted</div><div class="sbox-v sv-ok" id="sp-ok">0</div></div>
+      <div class="sbox"><div class="sbox-l">Skipped</div><div class="sbox-v sv-sk" id="sp-sk">0</div></div>
+      <div class="sbox"><div class="sbox-l">Errors</div><div class="sbox-v sv-er" id="sp-er">0</div></div>
+    </div>
+    <!-- DEBUG CONSOLE -->
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+      <div style="font-size:10px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:1px">Debug Console</div>
+      <button onclick="clearLog()" style="background:none;border:none;color:var(--ink3);font-size:10px;cursor:pointer">Clear</button>
+    </div>
+    <div class="dbg-console" id="dbg"></div>
+  </div>
+
+  <!-- RESULTS -->
+  <div class="res" id="res">
+    <div class="rb" id="rb"><div class="rb-ico" id="rb-ico"></div><div class="rb-t" id="rb-t"></div><div class="rb-s" id="rb-s"></div></div>
+    <div class="rstats">
+      <div class="rsc"><div class="rsc-n" id="rs-tot" style="color:var(--blue)">0</div><div class="rsc-l">Total Rows</div></div>
+      <div class="rsc"><div class="rsc-n" id="rs-ok" style="color:var(--grn)">0</div><div class="rsc-l">Inserted</div></div>
+      <div class="rsc"><div class="rsc-n" id="rs-sk" style="color:var(--gold)">0</div><div class="rsc-l">Skipped</div></div>
+      <div class="rsc"><div class="rsc-n" id="rs-er" style="color:var(--red)">0</div><div class="rsc-l">Failed</div></div>
+    </div>
+    <div class="errtbl" id="errtbl">
+      <div class="etbl-hdr">❌ Failed Rows — Fix and re-import</div>
+      <div id="errlist"></div>
+    </div>
+    <div class="act-row">
+      <button class="act-btn ab-re" onclick="resetImport()">🔄 Import Another</button>
+      <button class="act-btn ab-dl" id="dl-errs-btn" style="display:none" onclick="dlErrors()">⬇ Errors CSV</button>
+      <button class="act-btn ab-db" onclick="window.open('https://guileless-belekoy-5ea0de.netlify.app','_blank')">📊 Open Dashboard</button>
+    </div>
+  </div>
+
+</div><!-- /wrap -->
+
+<script>
+/* ═══════════════════════════════════════════════
+   CONFIG
+═══════════════════════════════════════════════ */
+const SB_URL  = 'https://vbprpviyhyqllmaodejz.supabase.co';
+const SB_ANON = 'sb_publishable_7E5EVnRSIeQ4w2oxtmzutQ_YVGsLydc';
+
+/* SAFE Supabase client — no web workers, no postMessage */
+const sb = window.supabase.createClient(SB_URL, SB_ANON, {
+  auth:{ persistSession:false, autoRefreshToken:false }
+});
+
+/* ═══════════════════════════════════════════════
+   SAFE DB HELPER
+   - Never passes raw Supabase response objects
+   - Always returns plain JSON-safe objects
+   - Full error propagation
+═══════════════════════════════════════════════ */
+async function dbQuery(fn) {
+  try {
+    const result = await fn();
+    // Serialize to plain JSON — fixes DataCloneError
+    const safe = JSON.parse(JSON.stringify({
+      data: result.data || null,
+      error: result.error ? { message: result.error.message, code: result.error.code || '' } : null
+    }));
+    return safe;
+  } catch(e) {
+    return { data: null, error: { message: e.message || String(e), code: 'EXCEPTION' } };
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════════ */
+let rows = [], errs = [], hasFam = false;
+let cBrands={}, cCats={}, cFamilies={}, cPackUnits={}, cWarehouses={};
+const st = { done:0, ok:0, skip:0, err:0 };
+
+/* ═══════════════════════════════════════════════
+   SKU — BRAND-FAMILY-SIZE-PACKTYPE
+═══════════════════════════════════════════════ */
+function mkSKU(brand, family, packSize, packType) {
+  const cl = (s, n) => (s||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,n);
+  const b = cl(brand, 6);
+  const f = cl((family||'').split(' ')[0], 8);
+  let sz = (packSize||'').toUpperCase().replace(/\s/g,'')
+    .replace('KG','K').replace('GM','G').replace('LTR','L').replace('ML','M').replace('PKT','P');
+  sz = sz.replace(/[^A-Z0-9]/g,'').slice(0,5);
+  const pm = {BAG:'B',POUCH:'P',BOTTLE:'L',JAR:'J',BOX:'X',TIN:'T',PCS:'U',DRUM:'D'};
+  const pt = pm[(packType||'').toUpperCase()] || 'B';
+  return [b,f,sz,pt].filter(Boolean).join('-');
+}
+
+/* ═══════════════════════════════════════════════
+   DB CHECK
+═══════════════════════════════════════════════ */
+async function checkDB() {
+  setDot('warn', 'Checking database...');
+  try {
+    const r = await dbQuery(() => sb.from('warehouses').select('id,name').order('id'));
+    if (r.error) throw new Error(r.error.message);
+    const whs = r.data || [];
+    cWarehouses = {};
+    whs.forEach((w, i) => { cWarehouses[i+1] = w.id; });
+    // Check product_families
+    const rf = await dbQuery(() => sb.from('product_families').select('id').limit(1));
+    hasFam = !rf.error;
+    setDot('ok', '✅ Connected — ' + whs.length + ' warehouses' + (hasFam ? ' · product_families ✓' : ' · product_families ✗'));
+    dblog('info', 'DB OK. WH map: ' + JSON.stringify(cWarehouses));
+  } catch(e) {
+    setDot('err', '❌ DB Error: ' + e.message);
+    dblog('err', 'DB check failed: ' + e.message);
+  }
+}
+function setDot(cls, msg) {
+  document.getElementById('s-dot').className = 's-dot ' + cls;
+  document.getElementById('s-msg').textContent = msg;
+}
+
+/* ═══════════════════════════════════════════════
+   UI TOGGLES
+═══════════════════════════════════════════════ */
+function toggleFmt() {
+  const b = document.getElementById('fmt-body');
+  const t = document.getElementById('fmt-tog');
+  const open = b.style.display === 'block';
+  b.style.display = open ? 'none' : 'block';
+  t.textContent = open ? 'Show ▾' : 'Hide ▴';
+}
+
+/* ═══════════════════════════════════════════════
+   FILE HANDLING
+═══════════════════════════════════════════════ */
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('dz').classList.remove('hover');
+  const f = e.dataTransfer.files[0];
+  if (f) processFile(f);
+}
+function handleFile(inp) {
+  if (inp.files[0]) processFile(inp.files[0]);
+}
+function processFile(file) {
+  if (!file.name.match(/\.(csv|txt)$/i)) { alert('Please select a .csv file'); return; }
+  const reader = new FileReader();
+  reader.onload = (e) => parseCSV(e.target.result, file);
+  reader.onerror = () => dblog('err', 'File read failed');
+  reader.readAsText(file, 'UTF-8');
+}
+
+/* ═══════════════════════════════════════════════
+   CSV PARSER
+═══════════════════════════════════════════════ */
+function parseCSV(text, file) {
+  try {
+    const lines = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n')
+      .split('\n').filter(l => l.trim());
+    if (lines.length < 2) { alert('CSV is empty or has no data rows'); return; }
+
+    const rawHeaders = csvLine(lines[0]);
+    const headers = rawHeaders.map(h =>
+      h.trim().toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'')
+    );
+    dblog('data', 'Headers detected: ' + headers.join(', '));
+
+    rows = [];
+    const parseErrs = [];
+
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+      const cols = csvLine(line);
+      const row = {};
+      headers.forEach((h, j) => { row[h] = (cols[j] || '').trim(); });
+
+      const fn = row.family_name || row.item_name || '';
+      if (!fn)       { parseErrs.push('Row '+(i+1)+': family_name missing'); continue; }
+      if (!row.brand){ parseErrs.push('Row '+(i+1)+': brand missing'); continue; }
+      if (!row.category){ parseErrs.push('Row '+(i+1)+': category missing'); continue; }
+
+      // Build plain JSON-safe row object — no objects, no references
+      rows.push({
+        rn: i+1,
+        family_name:    fn.toUpperCase().trim(),
+        brand:          row.brand.trim(),
+        category:       row.category.trim(),
+        variant_name:   row.variant_name || (fn + ' ' + (row.pack_size||'1KG')),
+        pack_size:      row.pack_size || '1KG',
+        pack_type:      (row.pack_type||'POUCH').toUpperCase(),
+        bulk_pack:      parseFloat(row.bulk_pack) || 1,
+        loose_allowed:  (row.loose_allowed||'YES').toUpperCase() === 'YES',
+        reorder_unit:   row.reorder_unit || 'KG',
+        reorder_mode:   (row.reorder_mode||'BAG').toUpperCase(),
+        barcode_type:   (row.barcode_type||'INTERNAL').toUpperCase(),
+        min_stock:      parseInt(row.min_stock) || 50,
+        cost_price:     parseFloat(row.cost_price) || null,
+        sale_price:     parseFloat(row.sale_price) || null,
+        barcode:        row.barcode || null,
+        item_id:        row.item_id || null,
+        s4:             parseFloat(row.stock_4no) || 0,
+        s50:            parseFloat(row.stock_50no) || 0,
+        sw3:            parseFloat(row.stock_w3) || 0,
+      });
+    }
+
+    // Update UI
+    document.getElementById('dz').classList.add('has');
+    document.getElementById('dz-t').textContent = file.name;
+    const m = document.getElementById('dz-m');
+    m.style.display = 'block';
+    m.textContent = rows.length + ' valid rows' + (parseErrs.length ? ', ' + parseErrs.length + ' parse errors' : '') + ' | ' + (file.size/1024).toFixed(1) + ' KB';
+
+    const btn = document.getElementById('ibtn');
+    btn.disabled = rows.length === 0;
+    btn.textContent = rows.length ? '📥 Import ' + rows.length + ' Items' : '❌ No valid rows found';
+
+    if (parseErrs.length) {
+      parseErrs.forEach(e => dblog('warn', e));
+    }
+    dblog('ok', rows.length + ' rows parsed OK');
+
+  } catch(e) {
+    dblog('err', 'CSV parse failed: ' + e.message);
+    console.error('[VTC] parseCSV error:', e);
+  }
+}
+
+function csvLine(line) {
+  const res = []; let cur = ''; let inQ = false;
+  for (const ch of line) {
+    if (ch === '"') { inQ = !inQ; }
+    else if (ch === ',' && !inQ) { res.push(cur); cur = ''; }
+    else { cur += ch; }
+  }
+  res.push(cur);
+  return res;
+}
+
+/* ═══════════════════════════════════════════════
+   MAIN IMPORT — SAFE SEQUENTIAL MODE
+═══════════════════════════════════════════════ */
+async function startImport() {
+  if (!rows.length) return;
+
+  // Reset state
+  errs = [];
+  Object.assign(st, {done:0, ok:0, skip:0, err:0});
+  document.getElementById('dbg').innerHTML = '';
+  document.getElementById('prog').style.display = 'block';
+  document.getElementById('res').style.display = 'none';
+  document.getElementById('ibtn').disabled = true;
+  document.getElementById('ibtn').innerHTML = '<span class="spinner"></span>Importing...';
+
+  dblog('info', '═══ SAFE SEQUENTIAL IMPORT START ═══');
+  dblog('info', 'Total rows: ' + rows.length);
+
+  // Load caches fresh
+  dblog('info', 'Loading master caches...');
+  const cacheOK = await loadCaches();
+  if (!cacheOK) {
+    dblog('err', 'Cache load failed — check DB connection');
+    document.getElementById('ibtn').disabled = false;
+    document.getElementById('ibtn').textContent = '📥 Retry Import';
+    return;
+  }
+
+  const total = rows.length;
+
+  // SEQUENTIAL — one row at a time, no parallel, no postMessage
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    setProgress(i, total, 'Row ' + (i+1) + ' / ' + total + ' — ' + row.family_name + ' [' + row.brand + ']');
+    await importRowSafe(row);
+    updateCounts();
+    // Small yield to prevent UI freeze
+    if (i % 3 === 0) await new Promise(r => setTimeout(r, 20));
+  }
+
+  setProgress(total, total, '✅ Import Complete!');
+  await new Promise(r => setTimeout(r, 300));
+  finishImport(total);
+}
+
+/* ═══════════════════════════════════════════════
+   LOAD CACHES — all plain JSON objects
+═══════════════════════════════════════════════ */
+async function loadCaches() {
+  try {
+    const [br, ca, pu, wh] = await Promise.all([
+      dbQuery(() => sb.from('brands').select('id,name')),
+      dbQuery(() => sb.from('categories').select('id,name')),
+      dbQuery(() => sb.from('pack_units').select('id,label')),
+      dbQuery(() => sb.from('warehouses').select('id,name').order('id')),
+    ]);
+
+    if (br.error) throw new Error('brands: ' + br.error.message);
+    if (ca.error) throw new Error('categories: ' + ca.error.message);
+
+    cBrands   = {}; (br.data||[]).forEach(b => cBrands[b.name.toLowerCase()] = b.id);
+    cCats     = {}; (ca.data||[]).forEach(c => cCats[c.name.toLowerCase()] = c.id);
+    cPackUnits= {}; (pu.data||[]).forEach(p => cPackUnits[p.label.toLowerCase()] = p.id);
+    cWarehouses={}; (wh.data||[]).forEach((w,i) => cWarehouses[i+1] = w.id);
+
+    if (hasFam) {
+      const fa = await dbQuery(() => sb.from('product_families').select('id,name'));
+      cFamilies = {}; (fa.data||[]).forEach(f => cFamilies[f.name.toLowerCase()] = f.id);
+    }
+
+    // Check WH map
+    if (Object.keys(cWarehouses).length === 0) {
+      dblog('warn', 'No warehouses found! Add them in Supabase first.');
+      return false;
+    }
+
+    dblog('ok', 'Caches loaded — brands:' + Object.keys(cBrands).length +
+      ' cats:' + Object.keys(cCats).length +
+      ' WH:' + JSON.stringify(cWarehouses));
+    return true;
+  } catch(e) {
+    dblog('err', 'Cache load error: ' + e.message);
+    return false;
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   IMPORT ONE ROW — fully wrapped in try/catch
+═══════════════════════════════════════════════ */
+async function importRowSafe(row) {
+  try {
+    dblog('info', '→ Row ' + row.rn + ': ' + row.family_name + ' [' + row.brand + '] ' + row.variant_name);
+
+    // 1. Brand
+    const brandId = await goc('brands', 'name', row.brand, cBrands);
+    if (!brandId) throw new Error('Could not get/create brand: ' + row.brand);
+
+    // 2. Category
+    const catId = await goc('categories', 'name', row.category, cCats);
+    if (!catId) throw new Error('Could not get/create category: ' + row.category);
+
+    // 3. Product family (optional)
+    let familyId = null;
+    if (hasFam && document.getElementById('o-fam').checked) {
+      familyId = await gocFamily(row.family_name, catId);
+    }
+
+    // 4. Pack unit
+    const puId = await gocPackUnit(row.pack_size, row.bulk_pack, row.reorder_unit);
+
+    // 5. Product
+    const prodId = await gocProduct(row.family_name, brandId, catId);
+    if (!prodId) throw new Error('Could not get/create product: ' + row.family_name);
+
+    // 6. Variant
+    const vr = await gocVariant(row, prodId, familyId, puId);
+
+    if (vr.skipped) {
+      st.skip++;
+      dblog('warn', '  SKIPPED (duplicate): ' + row.family_name + ' [' + row.brand + '] ' + row.variant_name);
+    } else {
+      st.ok++;
+      dblog('ok', '  INSERTED: ' + row.family_name + ' SKU:' + (vr.sku||'—') + ' ID:' + (vr.item_id||'—'));
+
+      // 7. Opening stock
+      if (document.getElementById('o-stock').checked) {
+        await insertOpeningStock(vr.id, row);
+      }
+    }
+
+  } catch(e) {
+    st.err++;
+    const errMsg = String(e.message || e);
+    errs.push({ rn: row.rn, msg: errMsg, dat: row.family_name + ' (' + row.brand + ')' });
+    dblog('err', '  ERROR Row ' + row.rn + ': ' + errMsg);
+    console.error('[VTC] Row', row.rn, 'error:', e);
+  }
+  st.done++;
+}
+
+/* ═══════════════════════════════════════════════
+   GET OR CREATE HELPERS
+   - All use dbQuery() wrapper
+   - Return plain IDs only (numbers/strings)
+═══════════════════════════════════════════════ */
+async function goc(table, field, value, cache) {
+  const key = value.toLowerCase();
+  if (cache[key]) return cache[key];
+
+  const ins = await dbQuery(() =>
+    sb.from(table).insert({ [field]: value }).select('id').single()
+  );
+
+  if (ins.error) {
+    if (ins.error.code === '23505') {
+      // Already exists — fetch it
+      const get = await dbQuery(() =>
+        sb.from(table).select('id').eq(field, value).single()
+      );
+      if (get.error) throw new Error(table + ' fetch: ' + get.error.message);
+      const id = get.data.id;
+      cache[key] = id;
+      return id;
+    }
+    throw new Error(table + ': ' + ins.error.message);
+  }
+
+  const id = ins.data.id;
+  cache[key] = id;
+  dblog('data', '  Created ' + table + ': ' + value + ' (id=' + id + ')');
+  return id;
+}
+
+async function gocFamily(name, catId) {
+  const key = name.toLowerCase();
+  if (cFamilies[key]) return cFamilies[key];
+  try {
+    const ins = await dbQuery(() =>
+      sb.from('product_families').insert({ name, category_id: catId }).select('id').single()
+    );
+    if (ins.error && ins.error.code === '23505') {
+      const get = await dbQuery(() =>
+        sb.from('product_families').select('id').eq('name', name).maybeSingle()
+      );
+      const id = get.data?.id || null;
+      if (id) cFamilies[key] = id;
+      return id;
+    }
+    if (ins.error) throw ins.error;
+    const id = ins.data.id;
+    cFamilies[key] = id;
+    dblog('data', '  Created family: ' + name);
+    return id;
+  } catch(e) {
+    // Non-fatal — family is optional
+    dblog('warn', '  Family create failed (non-fatal): ' + e.message);
+    return null;
+  }
+}
+
+async function gocPackUnit(label, bulkKg, unit) {
+  const key = label.toLowerCase();
+  if (cPackUnits[key]) return cPackUnits[key];
+  const pt = unit === 'PKT' ? 'pouch' : unit === 'Ltr' ? 'bottle' : 'bag';
+  const ins = await dbQuery(() =>
+    sb.from('pack_units').insert({ label, qty_kg: parseFloat(bulkKg)||1, pack_type: pt }).select('id').single()
+  );
+  if (ins.error && ins.error.code === '23505') {
+    const get = await dbQuery(() => sb.from('pack_units').select('id').eq('label', label).single());
+    if (get.error) throw new Error('pack_units fetch: ' + get.error.message);
+    cPackUnits[key] = get.data.id;
+    return get.data.id;
+  }
+  if (ins.error) throw new Error('pack_units: ' + ins.error.message);
+  cPackUnits[key] = ins.data.id;
+  return ins.data.id;
+}
+
+async function gocProduct(familyName, brandId, catId) {
+  // Check if exists
+  const chk = await dbQuery(() =>
+    sb.from('products').select('id').eq('family_name', familyName).eq('brand_id', brandId).maybeSingle()
+  );
+  if (chk.data) return chk.data.id;
+
+  const ins = await dbQuery(() =>
+    sb.from('products').insert({ family_name: familyName, brand_id: brandId, category_id: catId }).select('id').single()
+  );
+  if (ins.error && ins.error.code === '23505') {
+    const get = await dbQuery(() =>
+      sb.from('products').select('id').eq('family_name', familyName).eq('brand_id', brandId).single()
+    );
+    if (get.error) throw new Error('products fetch: ' + get.error.message);
+    return get.data.id;
+  }
+  if (ins.error) throw new Error('products: ' + ins.error.message);
+  return ins.data.id;
+}
+
+async function gocVariant(row, prodId, familyId, puId) {
+  // Duplicate check
+  const chk = await dbQuery(() =>
+    sb.from('variants').select('id,item_id,sku')
+      .eq('product_id', prodId).eq('variant_name', row.variant_name).maybeSingle()
+  );
+  if (chk.data && document.getElementById('o-dup').checked) {
+    return { skipped: true };
+  }
+
+  // Build unique SKU
+  let sku = null;
+  if (document.getElementById('o-sku').checked) {
+    sku = mkSKU(row.brand, row.family_name, row.pack_size, row.pack_type);
+    // Ensure SKU is unique
+    const skuChk = await dbQuery(() =>
+      sb.from('variants').select('id').eq('sku', sku).maybeSingle()
+    );
+    if (skuChk.data) {
+      sku = sku + '-' + Date.now().toString(36).slice(-4).toUpperCase();
+    }
+  }
+
+  // Auto item_id
+  let itemId = row.item_id;
+  if (!itemId) {
+    const last = await dbQuery(() =>
+      sb.from('variants').select('item_id').like('item_id', 'VTC-%').order('item_id', { ascending: false }).limit(1)
+    );
+    const lastNum = (last.data && last.data.length)
+      ? (parseInt(last.data[0].item_id.replace('VTC-', '')) || 2099)
+      : 2099;
+    itemId = 'VTC-' + (lastNum + 1);
+  }
+
+  // Build plain payload — no objects, no references
+  const payload = {
+    product_id:   prodId,
+    pack_unit_id: puId,
+    item_id:      itemId,
+    sku:          sku,
+    variant_name: row.variant_name,
+    unit:         row.reorder_unit || 'KG',
+    bulk_pack_kg: row.bulk_pack,
+    pack_type:    row.pack_type,
+    loose_allowed:row.loose_allowed,
+    reorder_mode: row.reorder_mode,
+    min_stock:    row.min_stock,
+    is_active:    true,
+  };
+  if (familyId)      payload.family_id   = familyId;
+  if (row.cost_price)payload.cost_price  = row.cost_price;
+  if (row.sale_price)payload.sale_price  = row.sale_price;
+  if (row.barcode)   payload.barcode     = row.barcode;
+
+  const ins = await dbQuery(() =>
+    sb.from('variants').insert(payload).select('id,item_id,sku').single()
+  );
+  if (ins.error && ins.error.code === '23505') {
+    if (document.getElementById('o-dup').checked) return { skipped: true };
+    throw new Error('Duplicate variant: ' + row.variant_name);
+  }
+  if (ins.error) throw new Error('variants: ' + ins.error.message);
+
+  // Return only plain values
+  return {
+    skipped:  false,
+    id:       ins.data.id,
+    item_id:  ins.data.item_id,
+    sku:      ins.data.sku,
+  };
+}
+
+/* ═══════════════════════════════════════════════
+   OPENING STOCK INSERT
+   stock_4no / stock_50no / stock_w3
+═══════════════════════════════════════════════ */
+async function insertOpeningStock(variantId, row) {
+  const map = [
+    { pos: 1, kg: row.s4,  label: 'WH-4No'  },
+    { pos: 2, kg: row.s50, label: 'WH-50No' },
+    { pos: 3, kg: row.sw3, label: 'W3'      },
+  ];
+
+  for (const s of map) {
+    if (s.kg <= 0) continue;
+    const whId = cWarehouses[s.pos];
+    if (!whId) {
+      dblog('warn', '  No warehouse for position ' + s.pos + ' — skipping stock');
+      continue;
+    }
+
+    const bags     = Math.floor(s.kg / (row.bulk_pack || 1));
+    const loose_kg = parseFloat((s.kg % (row.bulk_pack || 1)).toFixed(3));
+
+    // Plain payload only
+    const txPayload = {
+      variant_id:       variantId,
+      warehouse_id:     whId,
+      transaction_type: 'OPENING',
+      qty:              s.kg,
+      bags:             bags,
+      loose_kg:         loose_kg,
+      party_name:       'Opening Balance',
+      notes:            'CSV Bulk Import',
+    };
+
+    const res = await dbQuery(() =>
+      sb.from('stock_transactions').insert(txPayload).select('id').single()
+    );
+
+    if (res.error) {
+      dblog('warn', '  Stock insert warn (' + s.label + '): ' + res.error.message);
+    } else {
+      dblog('ok', '  Stock: ' + s.label + ' = ' + s.kg + 'KG (' + bags + ' Bags + ' + loose_kg + 'KG) txn#' + res.data.id);
+    }
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   UI HELPERS
+═══════════════════════════════════════════════ */
+function setProgress(done, total, title) {
+  const pct = total ? Math.round(done / total * 100) : 0;
+  document.getElementById('prog-fill').style.width = pct + '%';
+  document.getElementById('prog-pct').textContent = pct + '%';
+  document.getElementById('prog-title').textContent = title;
+}
+function updateCounts() {
+  document.getElementById('sp-done').textContent = st.done;
+  document.getElementById('sp-ok').textContent   = st.ok;
+  document.getElementById('sp-sk').textContent   = st.skip;
+  document.getElementById('sp-er').textContent   = st.err;
+}
+function dblog(type, msg) {
+  const el = document.getElementById('dbg');
+  const d = document.createElement('div');
+  d.className = 'dl dl-' + (type === 'ok' ? 'ok' : type === 'err' ? 'err' : type === 'warn' ? 'warn' : type === 'data' ? 'data' : 'info');
+  const prefix = { ok:'✓ ', err:'✗ ', warn:'⚠ ', data:'◆ ', info:'→ ' };
+  d.textContent = (prefix[type]||'  ') + msg;
+  el.appendChild(d);
+  el.scrollTop = el.scrollHeight;
+}
+function clearLog() { document.getElementById('dbg').innerHTML = ''; }
+
+function finishImport(total) {
+  document.getElementById('res').style.display = 'block';
+  document.getElementById('rs-tot').textContent = total;
+  document.getElementById('rs-ok').textContent  = st.ok;
+  document.getElementById('rs-sk').textContent  = st.skip;
+  document.getElementById('rs-er').textContent  = st.err;
+
+  const rb = document.getElementById('rb');
+  if (!st.err) {
+    rb.className = 'rb rb-ok';
+    document.getElementById('rb-ico').textContent = '🎉';
+    document.getElementById('rb-t').textContent   = 'Import Successful!';
+    document.getElementById('rb-s').textContent   = st.ok + ' items imported, ' + st.skip + ' skipped';
+  } else if (st.ok > 0) {
+    rb.className = 'rb rb-partial';
+    document.getElementById('rb-ico').textContent = '⚠️';
+    document.getElementById('rb-t').textContent   = 'Partial Import';
+    document.getElementById('rb-s').textContent   = st.ok + ' imported, ' + st.err + ' failed — check console';
+  } else {
+    rb.className = 'rb rb-fail';
+    document.getElementById('rb-ico').textContent = '❌';
+    document.getElementById('rb-t').textContent   = 'Import Failed';
+    document.getElementById('rb-s').textContent   = 'All ' + st.err + ' rows failed — check debug console';
+  }
+
+  if (errs.length) {
+    document.getElementById('errtbl').style.display = 'block';
+    document.getElementById('dl-errs-btn').style.display = 'block';
+    document.getElementById('errlist').innerHTML = errs.slice(0, 20).map(e =>
+      `<div class="erow"><div class="erow-top"><span class="er-rn">Row ${e.rn}</span><span class="er-msg">${e.msg}</span></div><div class="er-dat">${e.dat}</div></div>`
+    ).join('') + (errs.length > 20 ? `<div class="erow" style="color:var(--ink3)">...and ${errs.length-20} more errors</div>` : '');
+  }
+
+  document.getElementById('ibtn').disabled = false;
+  document.getElementById('ibtn').textContent = '📥 Import Another File';
+  dblog('info', '═══ IMPORT COMPLETE: ok=' + st.ok + ' skip=' + st.skip + ' err=' + st.err + ' ═══');
+}
+
+function resetImport() {
+  rows = []; errs = [];
+  Object.assign(st, {done:0, ok:0, skip:0, err:0});
+  document.getElementById('dz').classList.remove('has');
+  document.getElementById('dz-t').textContent = 'Drop CSV file here or tap to browse';
+  document.getElementById('dz-m').style.display = 'none';
+  document.getElementById('fInput').value = '';
+  document.getElementById('ibtn').disabled = true;
+  document.getElementById('ibtn').textContent = '📥 Select a CSV File First';
+  document.getElementById('prog').style.display = 'none';
+  document.getElementById('res').style.display = 'none';
+  document.getElementById('errtbl').style.display = 'none';
+}
+
+function dlErrors() {
+  const csv = 'row_number,item,error_message\n' +
+    errs.map(e => e.rn + ',"' + e.dat + '","' + e.msg.replace(/"/g,"'") + '"').join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv'}));
+  a.download = 'vijay_import_errors_' + Date.now() + '.csv';
+  a.click();
+}
+
+/* ═══════════════════════════════════════════════
+   SAMPLE CSV
+═══════════════════════════════════════════════ */
+const SAMPLE_CSV = `family_name,brand,category,variant_name,pack_size,pack_type,bulk_pack,bulk_pack_size,loose_allowed,reorder_unit,reorder_mode,barcode_type,min_stock,cost_price,sale_price,barcode,item_id,stock_4no,stock_50no,stock_w3
+CHANA DAL,Tata,Dal,1KG Pack,1KG,POUCH,25,25KG,YES,KG,BAG,INTERNAL,100,45,55,,VTC-2001,212,80,50
+KALA CHANA,Tata,Dal,1KG Pack,1KG,POUCH,25,25KG,YES,KG,BAG,INTERNAL,100,42,52,,VTC-2002,30,0,0
+KABULI CHANA,Tata,Dal,1KG Pack,1KG,POUCH,25,25KG,YES,KG,BAG,INTERNAL,100,60,75,,VTC-2003,45,0,0
+TOOR DAL,Tata,Dal,1KG Pack,1KG,POUCH,25,25KG,YES,KG,BAG,INTERNAL,100,85,95,,VTC-2004,160,0,0
+MOONG CHILKA,Tata,Dal,1KG Pack,1KG,POUCH,25,25KG,YES,KG,BAG,INTERNAL,200,75,90,,VTC-2005,105,0,0
+MOONG SABOOT,Tata,Dal,1KG Pack,1KG,POUCH,25,25KG,YES,KG,BAG,INTERNAL,50,65,80,,VTC-2006,68,0,0
+URAD CHILKA,Tata,Dal,1KG Pack,1KG,POUCH,25,25KG,YES,KG,BAG,INTERNAL,50,70,85,,VTC-2007,99,42,0
+MALKA MASAR,Tata,Dal,1KG Pack,1KG,POUCH,25,25KG,YES,KG,BAG,INTERNAL,150,60,72,,VTC-2008,186,0,0
+RAJMAH KASHMIRI,Tata,Dal,1KG Pack,1KG,POUCH,10,10KG,YES,KG,BAG,INTERNAL,50,90,110,,VTC-2009,53,51,0
+POHA,Tata,Other,1KG Pack,1KG,POUCH,20,20KG,YES,KG,BAG,INTERNAL,100,30,38,,VTC-2010,405,0,0
+TATA GOLD TEA,Tata,Tea,250GM Pack,250GM,POUCH,12,12,NO,PKT,PCS,BRAND,108,85,95,,VTC-2011,36,0,0
+TATA AGNI ATTA,Tata,Atta,10KG Bag,10KG,BAG,10,10KG,NO,KG,PCS,INTERNAL,100,280,320,,VTC-2020,40,0,0
+LAL MIRCH POWDER,Catch,Masala,1KG Pack,1KG,POUCH,20,20KG,YES,KG,BAG,INTERNAL,60,120,150,,VTC-2021,0,0,0
+HALDI POWDER,Catch,Masala,1KG Pack,1KG,POUCH,20,20KG,YES,KG,BAG,INTERNAL,60,100,130,,VTC-2022,24,0,0
+DHANIYA POWDER,Catch,Masala,1KG Pack,1KG,POUCH,20,20KG,YES,KG,BAG,INTERNAL,60,90,115,,VTC-2023,24,0,0
+HALDI POWDER,MDH,Masala,100GM Pack,100GM,POUCH,1,1,NO,PKT,PCS,BRAND,50,18,25,8901234500001,VTC-2030,0,0,0
+HALDI POWDER,MDH,Masala,500GM Pack,500GM,POUCH,1,1,NO,PKT,PCS,BRAND,30,80,100,8901234500002,VTC-2031,0,0,0
+SUNFLOWER OIL,Fortune,Oil,1 Ltr,1LTR,BOTTLE,15,15LTR,NO,Ltr,PCS,BRAND,50,95,110,,VTC-3001,90,45,0
+SUNFLOWER OIL,Fortune,Oil,5 Ltr,5LTR,JAR,15,15LTR,NO,Ltr,PCS,BRAND,20,420,490,,VTC-3002,30,15,0
+AASHIRWAD ATTA,ITC,Atta,10KG Bag,10KG,BAG,10,10KG,NO,KG,PCS,BRAND,200,280,320,,VTC-4001,100,50,0`;
+
+function dlSample() {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([SAMPLE_CSV], {type:'text/csv'}));
+  a.download = 'vijay_v2_import_sample.csv';
+  a.click();
+}
+
+/* ═══════════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════════ */
+checkDB();
+</script>
+</body>
+</html>
