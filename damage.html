@@ -115,12 +115,8 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
       </div>
       <div class="card">
         <h3>Add Item (fast)</h3>
-        <label>Item <span class="muted" style="text-transform:none">— type to search / 🎤 / 📷 (brand+MRP auto)</span></label>
-        <div class="row">
-          <input id="ieItem" placeholder="Item naam" autocomplete="off" oninput="erpSuggest(this.value)">
-          <button class="btn icobtn" id="voiceBtn" onclick="startVoice()">🎤</button>
-          <button class="btn icobtn" onclick="scanBarcode()">📷</button>
-        </div>
+        <label>Item <span class="muted" style="text-transform:none">— type to search (brand+MRP auto)</span></label>
+        <input id="ieItem" placeholder="Item naam" autocomplete="off" oninput="erpSuggest(this.value)">
         <div id="vstat" class="vstat"></div>
         <div id="sugg" class="list" style="margin-top:6px"></div>
         <div id="recent" class="chips"></div>
@@ -285,9 +281,11 @@ let suggT=null;
 function erpSuggest(q){pickedMaster=null;$('ieBrandView').value='';clearTimeout(suggT);validateEntry();
   if(!q||q.length<2){$('sugg').innerHTML='';return;}
   suggT=setTimeout(async()=>{try{const cid=curBag?curBag.company_id:null;
-    let qq=sb.from('mr_item_master').select('*').eq('is_deleted',false).eq('is_active',true).ilike('item_name','%'+q+'%').limit(8);
-    if(cid)qq=qq.eq('company_id',cid);
-    const {data}=await qq;const rows=data||[];
+    let rows=[];
+    // true fuzzy (trigram) via RPC; fallback to ilike substring
+    try{const rp=await sb.rpc('mr_search_items',{p_company:cid,p_q:q});if(!rp.error)rows=rp.data||[];}catch(_){}
+    if(!rows.length){let qq=sb.from('mr_item_master').select('*').eq('is_deleted',false).eq('is_active',true).ilike('item_name','%'+q+'%').limit(8);
+      if(cid)qq=qq.eq('company_id',cid);const {data}=await qq;rows=data||[];}
     let html=rows.map(r=>`<div class="it" style="cursor:pointer" onclick='pickMaster(${esc(JSON.stringify(r))})'><div class="nm"><b>${esc(r.item_name)}</b><small>${esc(brandName(r.brand_id))}${r.mrp?(' · ₹'+r.mrp):''}${r.is_approved?'':' · ⏳'}</small></div></div>`).join('');
     html+=`<div class="it" style="cursor:pointer;border-color:var(--cyan)" onclick="newItem()"><div class="nm"><b style="color:var(--cyan)">＋ Naya item add karo</b><small>"${esc(q)}" master mein nahi mila</small></div></div>`;
     $('sugg').innerHTML=html;
@@ -346,10 +344,15 @@ function renderItems(){
 async function editItem(id){const it=curItems.find(x=>x.id===id);if(!it)return;
   const nq=parseQty(prompt('Nayi Qty:',it.qty));if(!(nq>0)){toast('Qty galat');return;}
   const nm=parseFloat(prompt('Naya MRP:',it.mrp));if(!(nm>0)){toast('MRP galat');return;}
+  // CONFLICT CHECK: kisi aur ne to nahi badla?
+  const {data:fresh}=await sb.from('mr_items').select('qty,mrp,is_deleted').eq('id',id).single();
+  if(!fresh||fresh.is_deleted){toast('⚠️ Item ab maujood nahi — refresh');await reloadBagItems();return;}
+  if(Number(fresh.qty)!==Number(it.qty)||Number(fresh.mrp)!==Number(it.mrp)){toast('⚠️ Kisi aur ne ise badla — refresh ho raha');await reloadBagItems();return;}
   const {data,error}=await sb.from('mr_items').update({qty:nq,mrp:nm,updated_by_user_id:U.user_id,updated_by_name:U.user_name,updated_at:nowISO()}).eq('id',id).select().single();
   if(error){toast(error.message);return;}
   logAct('EDIT_ITEM','item',id,'Edited '+it.item_name,{qty:{old:it.qty,new:nq},mrp:{old:it.mrp,new:nm}});
   const idx=curItems.findIndex(x=>x.id===id);curItems[idx]=data;renderItems();toast('Updated ✓');}
+async function reloadBagItems(){if(!curBag)return;const {data}=await sb.from('mr_items').select('*').eq('bag_id',curBag.id).eq('is_deleted',false).order('created_at',{ascending:false});curItems=data||[];renderItems();}
 async function delItem(id){if(role==='STAFF'){toast('Staff delete nahi kar sakta');return;}
   const reason=prompt('Delete reason (zaroori):');if(!reason||!reason.trim()){toast('Reason zaroori');return;}
   const {error}=await sb.from('mr_items').update({is_deleted:true,deleted_by_user_id:U.user_id,deleted_by_name:U.user_name,deleted_at:nowISO(),deleted_reason:reason.trim()}).eq('id',id);
@@ -385,8 +388,10 @@ async function uploadPhotos(files){if(!curBag){toast('Bag nahi khula');return;}
 function renderThumbs(){$('thumbs').innerHTML=curPhotos.map(p=>`<img src="${esc(p.public_url)}">`).join('');}
 async function closeBag(){if(!curBag)return;if(curItems.length===0){toast('Bag khaali hai');return;}if(curPhotos.length===0){toast('Kam se kam 1 photo zaroori');return;}
   if(!confirm('Bag close karein? Items + photos lock ho jayenge.'))return;
-  const {error}=await sb.from('mr_bags').update({status:'CLOSED',closed_by_user_id:U.user_id,closed_by_name:U.user_name,closed_at:nowISO(),updated_at:nowISO()}).eq('id',curBag.id);
-  if(error){toast(error.message);return;}logAct('CLOSE_BAG','bag',curBag.id,'Closed '+curBag.bag_no);await makePDF(curBag,curItems);toast('Bag closed ✓');
+  const {data:upd,error}=await sb.from('mr_bags').update({status:'CLOSED',closed_by_user_id:U.user_id,closed_by_name:U.user_name,closed_at:nowISO(),updated_at:nowISO()}).eq('id',curBag.id).eq('status',curBag.status).select();
+  if(error){toast(error.message);return;}
+  if(!upd||!upd.length){toast('⚠️ Bag ka status kisi aur ne badal diya — Bags se dobara kholo');return;}
+  logAct('CLOSE_BAG','bag',curBag.id,'Closed '+curBag.bag_no);await makePDF(curBag,curItems);toast('Bag closed ✓');
   curBag=null;curItems=[];curPhotos=[];$('bagActive').classList.add('hide');$('bagSetup').classList.remove('hide');}
 async function makePDF(bag,items){try{const {jsPDF}=window.jspdf;const doc=new jsPDF({unit:'mm',format:'a5'});
   const co=(companies.find(c=>c.id===bag.company_id)||{}).name||'';const tQ=items.reduce((a,i)=>a+Number(i.qty||0),0),tV=items.reduce((a,i)=>a+Number(i.amount||0),0);
@@ -443,16 +448,22 @@ async function claimChange(id,cur){if(!can('settle')){toast('Permission nahi');r
 async function reopenBag(id,no){if(!can('reopen')){toast('Sirf Manager/Owner');return;}
   const reason=prompt('Reopen reason (zaroori):');if(!reason||!reason.trim()){toast('Reason zaroori');return;}
   const b=(await sb.from('mr_bags').select('reopen_count').eq('id',id).single()).data;
-  const {error}=await sb.from('mr_bags').update({status:'OPEN',reopened_by_user_id:U.user_id,reopened_by_name:U.user_name,reopened_at:nowISO(),reopen_reason:reason.trim(),reopen_count:((b&&b.reopen_count)||0)+1,updated_at:nowISO()}).eq('id',id);
-  if(error){toast(error.message);return;}logAct('REOPEN_BAG','bag',id,'Reopened '+no+' — '+reason.trim());closeSheet();loadBags();toast('Reopened');}
+  const {data:upd,error}=await sb.from('mr_bags').update({status:'OPEN',reopened_by_user_id:U.user_id,reopened_by_name:U.user_name,reopened_at:nowISO(),reopen_reason:reason.trim(),reopen_count:((b&&b.reopen_count)||0)+1,updated_at:nowISO()}).eq('id',id).eq('status','CLOSED').select();
+  if(error){toast(error.message);return;}
+  if(!upd||!upd.length){toast('⚠️ Status badal gaya (closed nahi raha) — refresh');closeSheet();loadBags();return;}
+  logAct('REOPEN_BAG','bag',id,'Reopened '+no+' — '+reason.trim());closeSheet();loadBags();toast('Reopened');}
 async function approveBag(id,no){if(role!=='OWNER'){toast('Sirf Owner');return;}
   if(!confirm('Approve? Iske baad PERMANENTLY lock (no edit/reopen/delete).'))return;
-  const {error}=await sb.from('mr_bags').update({status:'APPROVED',approved_by_user_id:U.user_id,approved_by_name:U.user_name,approved_at:nowISO(),updated_at:nowISO()}).eq('id',id);
-  if(error){toast(error.message);return;}logAct('APPROVE_BAG','bag',id,'Approved '+no);closeSheet();loadBags();toast('Approved + locked 🔒');}
+  const {data:upd,error}=await sb.from('mr_bags').update({status:'APPROVED',approved_by_user_id:U.user_id,approved_by_name:U.user_name,approved_at:nowISO(),updated_at:nowISO()}).eq('id',id).eq('status','CLOSED').select();
+  if(error){toast(error.message);return;}
+  if(!upd||!upd.length){toast('⚠️ Bag CLOSED state mein nahi raha — refresh');closeSheet();loadBags();return;}
+  logAct('APPROVE_BAG','bag',id,'Approved '+no);closeSheet();loadBags();toast('Approved + locked 🔒');}
 async function deleteBag(id,no){if(!can('delete')){toast('Permission nahi');return;}
   const reason=prompt('Bag delete reason (zaroori):');if(!reason||!reason.trim()){toast('Reason zaroori');return;}
-  const {error}=await sb.from('mr_bags').update({status:'DELETED',is_deleted:true,deleted_by_user_id:U.user_id,deleted_by_name:U.user_name,deleted_at:nowISO(),deleted_reason:reason.trim(),updated_at:nowISO()}).eq('id',id);
-  if(error){toast(error.message);return;}logAct('DELETE_BAG','bag',id,'Deleted '+no+' — '+reason.trim());closeSheet();loadBags();toast('Bag deleted');}
+  const {data:upd,error}=await sb.from('mr_bags').update({status:'DELETED',is_deleted:true,deleted_by_user_id:U.user_id,deleted_by_name:U.user_name,deleted_at:nowISO(),deleted_reason:reason.trim(),updated_at:nowISO()}).eq('id',id).neq('status','APPROVED').neq('status','DELETED').select();
+  if(error){toast(error.message);return;}
+  if(!upd||!upd.length){toast('⚠️ Bag approved/deleted ho chuka — delete nahi hoga');closeSheet();loadBags();return;}
+  logAct('DELETE_BAG','bag',id,'Deleted '+no+' — '+reason.trim());closeSheet();loadBags();toast('Bag deleted');}
 async function report(kind){
   $('repOut').classList.remove('hide');$('repBody').innerHTML='Loading…';
   const T={company:'Company-wise Claim',brand:'Brand-wise Damage',item:'Item-wise Damage',bag:'Bag-wise',pending:'Claim Pending',settled:'Claim Settled',opening:'Opening Damage',warehouse:'Warehouse Damage',market:'Market Return',staff:'Staff Productivity'};
