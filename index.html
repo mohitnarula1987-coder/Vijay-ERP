@@ -360,6 +360,7 @@ canvas{max-height:220px}
     <div class="ntab" onclick="nav('alerts')" id="alert-ntab">🔔 Alerts</div>
     <div class="ntab" onclick="nav('barcode')">🔖 Barcode</div>
     <div class="ntab" onclick="nav('tools')">🔧 Tools</div>
+    <div class="ntab" onclick="location.href='damage.html'" style="color:#e23744;font-weight:700">🗑️ Damage &amp; Claims</div>
   </div>
 
   <div class="main">
@@ -654,7 +655,6 @@ async function doLogin(){
   if(pin!=='1234'){e.textContent='Wrong PIN. Demo PIN: 1234';return;}
   U={name:ph.replace(/^\+91\s?/,'').slice(0,10)||'Staff',phone:ph,role:'staff'};
   try{const r=await db(()=>sb.from('users').select('*').eq('phone',ph).maybeSingle());if(r.data)U=r.data;}catch(_){}
-  try{localStorage.setItem('vtc-session',JSON.stringify(U));}catch(_){}/* BUG-2: persist session */
   document.getElementById('ls').style.display='none';
   document.getElementById('app').style.display='flex';
   document.getElementById('hu').textContent=U.name||'Staff';
@@ -663,7 +663,6 @@ async function doLogin(){
 }
 function doLogout(){
   U=null;if(rt)sb.removeChannel(rt);
-  try{localStorage.removeItem('vtc-session');}catch(_){}/* BUG-2: clear session */
   document.getElementById('app').style.display='none';
   document.getElementById('ls').style.display='flex';
   document.getElementById('lp').value='';document.getElementById('lpin').value='';
@@ -891,8 +890,6 @@ async function saveTxn(){
       const fWh=parseInt(document.getElementById('ti-fwh').value),tWh=parseInt(document.getElementById('ti-twh').value);
       if(!fWh||!tWh){toast('Dono WH select karo!');btn.disabled=false;btn.innerHTML='✅ SAVE & GENERATE VOUCHER';return;}
       if(fWh===tWh){toast('Same WH nahi!');btn.disabled=false;btn.innerHTML='✅ SAVE & GENERATE VOUCHER';return;}
-      /* BUG-1 FIX: prevent transferring more than source warehouse has */
-      {const _src=stockData.find(s=>s.variant_id===vid&&s.warehouse_id===fWh);const _avail=_src?(+_src.total_kg||0):0;if(qty>_avail){toast('❌ Source WH mein sirf '+_avail.toFixed(1)+' KG hai — '+qty+' KG transfer nahi ho sakta');btn.disabled=false;btn.innerHTML='✅ SAVE & GENERATE VOUCHER';return;}}
       const r=await db(()=>sb.from('stock_transactions').insert([{variant_id:vid,warehouse_id:fWh,transaction_type:'TRANSFER_OUT',qty,party_name:party||'Transfer',notes,ref_no:ref+'-O'},{variant_id:vid,warehouse_id:tWh,transaction_type:'TRANSFER_IN',qty,party_name:party||'Transfer',notes,ref_no:ref+'-I'}]).select('id'));
       if(r.error)throw new Error(r.error.msg);
       lastV={ref,type:'TRANSFER',date:new Date().toLocaleString('en-IN'),item:vRow?.products?.family_name||vRow?.variant_name||'',brand:vRow?.products?.brands?.name||'',vname:vRow?.variant_name||'',itemId:vRow?.item_id||'',sku:vRow?.sku||'',qty,unit:vRow?.unit||'KG',wh:(warehouses.find(w=>w.id===fWh)?.name||'')+' → '+(warehouses.find(w=>w.id===tWh)?.name||''),party:party||'—',notes:notes||'—',user:U?.name||'Staff'};
@@ -900,8 +897,6 @@ async function saveTxn(){
       const whId=parseInt(document.getElementById('ti-wh').value);
       if(!whId){toast('WH select karo!');btn.disabled=false;btn.innerHTML='✅ SAVE & GENERATE VOUCHER';return;}
       const txType=curTT==='INWARD'?'INWARD':curTT==='OUTWARD'?'OUTWARD':curTT==='DAMAGE'?'DAMAGE':curTT==='PACKING'?'PACKING':'CONVERSION';
-      /* BUG-1 FIX: prevent stock going negative on OUTWARD / DAMAGE (dispatch/loss) */
-      if(txType==='OUTWARD'||txType==='DAMAGE'){const _cur=stockData.find(s=>s.variant_id===vid&&s.warehouse_id===whId);const _avail=_cur?(+_cur.total_kg||0):0;if(qty>_avail){toast('❌ Stock kam hai! '+(warehouses.find(w=>w.id===whId)?.name||'WH')+' mein sirf '+_avail.toFixed(1)+' KG — '+curTT+' '+qty+' KG nahi ho sakta');btn.disabled=false;btn.innerHTML='✅ SAVE & GENERATE VOUCHER';return;}}
       const r=await db(()=>sb.from('stock_transactions').insert({variant_id:vid,warehouse_id:whId,transaction_type:txType,qty,party_name:party||null,notes,ref_no:ref}).select('id').single());
       if(r.error)throw new Error(r.error.msg);
       lastV={ref,type:curTT,date:new Date().toLocaleString('en-IN'),item:vRow?.products?.family_name||vRow?.variant_name||'',brand:vRow?.products?.brands?.name||'',vname:vRow?.variant_name||'',itemId:vRow?.item_id||'',sku:vRow?.sku||'',qty,unit:vRow?.unit||'KG',wh:warehouses.find(w=>w.id===whId)?.name||'',party:party||'—',notes:notes||'—',user:U?.name||'Staff'};
@@ -1177,21 +1172,6 @@ function nav(name){
 }
 
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.style.display='block';clearTimeout(t._t);t._t=setTimeout(()=>t.style.display='none',3200);}
-
-/* ══ BUG-2: SESSION RESTORE ON LOAD ══════════ */
-function restoreSession(){
-  try{
-    const s=localStorage.getItem('vtc-session');if(!s)return;
-    const u=JSON.parse(s);if(!u||!u.phone)return;
-    U=u;
-    document.getElementById('ls').style.display='none';
-    document.getElementById('app').style.display='flex';
-    document.getElementById('hu').textContent=U.name||'Staff';
-    document.getElementById('h-role').textContent=(U.role||'staff').toUpperCase();
-    initApp();
-  }catch(_){}
-}
-restoreSession();
 </script>
 </body>
 </html>
