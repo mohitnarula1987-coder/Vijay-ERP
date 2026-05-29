@@ -88,6 +88,13 @@ td.r,th.r{text-align:right}
   color:var(--txt);padding:12px 18px;border-radius:30px;font-size:13px;z-index:90;display:none;box-shadow:var(--sh);max-width:90%}
 .gate{min-height:80vh;display:grid;place-items:center;text-align:center;padding:30px}
 .gate .logo{width:60px;height:60px;font-size:20px;margin:0 auto 16px}
+.icobtn{flex:0 0 48px;display:grid;place-items:center;font-size:18px;padding:0}
+.icobtn.rec{background:#3a1010;border-color:#5a1f1f;color:#ff6b6b;animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.chip{font-size:12px;padding:6px 10px;border-radius:18px;border:1px solid var(--line);background:var(--bg2);cursor:pointer;white-space:nowrap}
+.chip:active{transform:scale(.96)}
+.vstat{font-size:12px;color:var(--cyan);margin-top:6px;min-height:14px}
 @media(max-width:520px){.src-grid{grid-template-columns:repeat(3,1fr)}}
 </style>
 </head>
@@ -101,6 +108,16 @@ td.r,th.r{text-align:right}
     <p class="muted" style="max-width:320px">Pehle Vijay ERP mein login karein. Yeh module wahi login use karta hai (alag password nahi).</p>
     <a class="btn btn-cyan btn-block" style="display:inline-block;margin-top:14px;text-decoration:none" href="index.html">→ ERP Login kholo</a>
     <p class="muted" style="margin-top:14px">Login ke baad, wapas is page pe aayein.</p>
+  </div>
+</div>
+
+<!-- ====== BLOCKED (device not approved) ====== -->
+<div id="blocked" class="gate hide">
+  <div>
+    <div class="logo" style="border-color:var(--gold);color:var(--gold)">🔒</div>
+    <h2 style="margin:0 0 8px">Device approval pending</h2>
+    <p class="muted" style="max-width:340px">Yeh device abhi approved nahi hai. Owner ko bolo ki <b>Users → Devices</b> mein ise <b>Approve</b> kare. Forwarded link doosre device pe access nahi dega.</p>
+    <p id="blkInfo" class="muted" style="margin-top:12px"></p>
   </div>
 </div>
 
@@ -165,9 +182,15 @@ td.r,th.r{text-align:right}
           <select id="ieBrand"></select>
           <button class="btn btn-sm" style="flex:0 0 auto" onclick="addBrand()">+ Add</button>
         </div>
-        <label>Item <span class="muted" style="text-transform:none">— type free text, ya ERP search</span></label>
-        <input id="ieItem" placeholder="Item naam (free text)" autocomplete="off" oninput="erpSuggest(this.value)">
+        <label>Item <span class="muted" style="text-transform:none">— type / ERP search / 🎤 voice / 📷 barcode</span></label>
+        <div class="row">
+          <input id="ieItem" placeholder="Item naam (free text)" autocomplete="off" oninput="erpSuggest(this.value)">
+          <button class="btn icobtn" id="voiceBtn" title="Voice" onclick="startVoice()">🎤</button>
+          <button class="btn icobtn" title="Barcode scan" onclick="scanBarcode()">📷</button>
+        </div>
+        <div id="vstat" class="vstat"></div>
         <div id="sugg" class="list" style="margin-top:6px"></div>
+        <div id="recent" class="chips"></div>
         <div id="whReasonWrap" class="hide">
           <label>Reason (warehouse damage)</label>
           <select id="ieReason">
@@ -229,6 +252,10 @@ td.r,th.r{text-align:right}
     <div class="card">
       <h3>Bags</h3>
       <div class="row">
+        <input id="fBagNo" placeholder="Search BAG number…" onkeydown="if(event.key==='Enter')loadBags()">
+        <button class="btn btn-sm" style="flex:0 0 auto" onclick="loadBags()">🔍</button>
+      </div>
+      <div class="row" style="margin-top:8px">
         <select id="fSource"><option value="">All sources</option><option value="MARKET_RETURN">Market Return</option>
           <option value="OPENING_DAMAGE">Opening Damage</option><option value="WAREHOUSE_DAMAGE">Warehouse</option></select>
         <select id="fStatus"><option value="">All status</option><option value="OPEN">Open</option><option value="CLOSED">Closed</option></select>
@@ -251,6 +278,7 @@ td.r,th.r{text-align:right}
         <div class="src" onclick="report('settled')">Claim Settled</div>
         <div class="src" onclick="report('opening')">Opening Damage</div>
         <div class="src" onclick="report('warehouse')">Warehouse Damage</div>
+        <div class="src" onclick="report('market')">Market Return</div>
         <div class="src" onclick="report('staff')">Staff Productivity</div>
       </div>
     </div>
@@ -269,6 +297,9 @@ td.r,th.r{text-align:right}
       <button class="btn btn-cyan btn-block" style="margin-top:10px" onclick="saveUser()">Save User</button>
     </div>
     <div class="card"><h3>Users</h3><div id="userList"></div></div>
+    <div class="card"><h3>Devices — approve / pending</h3>
+      <p class="muted" style="margin-top:-4px">Naya device (ya forwarded URL) tab tak block rahega jab tak Owner approve na kare.</p>
+      <div id="deviceList"></div></div>
   </section>
 </main>
 </div>
@@ -321,7 +352,12 @@ async function boot(){
   localStorage.setItem('mr-device-id',deviceId);
   deviceName=navigator.platform+' · '+(navigator.userAgent.match(/(iphone|ipad|android|windows|mac|linux)/i)||['web'])[0];
   await resolveRole();
-  await registerDevice();
+  const dev=await registerDevice();
+  if(!(window._bootstrap || role==='OWNER' || dev.approved)){
+    $('blocked').classList.remove('hide');
+    $('blkInfo').textContent='Device: '+deviceName+' · '+U.user_name+' ('+U.mobile+')';
+    return;
+  }
   $('app').classList.remove('hide');
   $('uname').textContent=U.user_name;
   const b=$('ubadge'); b.textContent=role; b.className='badge '+(role==='OWNER'?'b-owner':role==='MANAGER'?'b-manager':'b-staff');
@@ -348,9 +384,10 @@ async function registerDevice(){
     const now=new Date().toISOString();
     if(!data){ const cnt=await sb.from('mr_devices').select('id',{count:'exact',head:true}).eq('user_mobile',U.mobile);
       const first=((cnt.count||0)===0);
-      await sb.from('mr_devices').insert({user_mobile:U.mobile,device_id:deviceId,device_name:deviceName,is_approved:first,first_seen_at:now,last_login_at:now,last_activity_at:now});
-    }else{ await sb.from('mr_devices').update({last_login_at:now,last_activity_at:now}).eq('id',data.id); }
-  }catch(e){console.warn('device',e);}
+      const ins=await sb.from('mr_devices').insert({user_mobile:U.mobile,device_id:deviceId,device_name:deviceName,is_approved:first,first_seen_at:now,last_login_at:now,last_activity_at:now}).select().single();
+      return {approved: first || !!(ins.data&&ins.data.is_approved)};
+    }else{ await sb.from('mr_devices').update({last_login_at:now,last_activity_at:now}).eq('id',data.id); return {approved:!!data.is_approved}; }
+  }catch(e){console.warn('device',e); return {approved:true};} // error -> don't lock out
 }
 
 /* ════════════ MASTERS ════════════ */
@@ -444,7 +481,8 @@ function erpSuggest(q){ pickedVariant=null; clearTimeout(suggT); if(!q||q.length
 function vName(r){return r.name||r.item_name||r.variant_name||r.title||r.sku||r.code||('Item '+r.id);}
 function pickVariant(v){pickedVariant=v;$('ieItem').value=v.name;$('sugg').innerHTML='';if(v.mrp){$('ieMrp').value=v.mrp;calcAmt();}}
 
-async function saveItem(){
+async function saveItem(moveNext){
+  if(moveNext===undefined)moveNext=true;
   if(!curBag){toast('Bag nahi khula');return;}
   const name=$('ieItem').value.trim(); if(!name){toast('Item likho');return;}
   const qty=parseFloat($('ieQty').value||0); if(!(qty>0)){toast('Qty > 0 chahiye');return;}
@@ -458,20 +496,97 @@ async function saveItem(){
     replacement_item_name:$('ieRepl').checked?($('ieReplItem').value.trim()||null):null,
     replacement_warehouse_id:$('ieRepl').checked?($('ieReplWh').value||null):null,
     replacement_qty:$('ieRepl').checked?parseFloat($('ieReplQty').value||0)||null:null,
-    entry_method:'manual'});
+    entry_method:window._lastEntryMethod||'manual'});
   const {data,error}=await sb.from('mr_items').insert(row).select().single();
   if(error){toast('Error: '+error.message);return;}
-  curItems.unshift(data);
+  curItems.unshift(data); pushRecent({item_name:name,mrp:mrp,brand_id:bid,erp_variant_id:row.erp_variant_id});
   logAct('ADD_ITEM','item',data.id,'Added '+name+' x'+qty+' to '+curBag.bag_no);
-  // reset item fields, keep brand/source
+  window._lastEntryMethod='manual';
   $('ieItem').value='';$('ieQty').value='1';$('ieMrp').value='';$('ieAmt').textContent='Amount ₹0.00';
-  pickedVariant=null;$('sugg').innerHTML='';
+  pickedVariant=null;$('sugg').innerHTML='';$('vstat').textContent='';
   if($('ieRepl').checked){$('ieRepl').checked=false;toggleRepl();$('ieReplItem').value='';$('ieReplQty').value='';}
-  renderItems(); $('ieItem').focus();
-  toast('Saved ✓ next…');
+  renderItems(); if(moveNext)$('ieItem').focus();
+  toast('Saved ✓'+(moveNext?' next…':''));
 }
-// Enter key = Save & Next
-['ieItem','ieQty','ieMrp'].forEach(id=>{const el=$(id);el&&el.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();saveItem();}});});
+function clearRow(){
+  $('ieItem').value='';$('ieQty').value='1';$('ieMrp').value='';$('ieAmt').textContent='Amount ₹0.00';
+  pickedVariant=null;$('sugg').innerHTML='';$('vstat').textContent='';
+  if($('ieRepl').checked){$('ieRepl').checked=false;toggleRepl();}
+  $('ieItem').focus();
+}
+/* recent items panel (last 10 distinct) */
+let recentList=[];
+function pushRecent(o){ recentList=recentList.filter(r=>r.item_name.toLowerCase()!==o.item_name.toLowerCase()); recentList.unshift(o); recentList=recentList.slice(0,10); renderRecent(); }
+function renderRecent(){ const el=$('recent'); if(!el)return;
+  el.innerHTML=recentList.map((r,i)=>`<span class="chip" onclick="applyRecent(${i})">${esc(r.item_name)}${r.mrp?(' ₹'+r.mrp):''}</span>`).join(''); }
+function applyRecent(i){ const r=recentList[i]; if(!r)return; $('ieItem').value=r.item_name; if(r.mrp){$('ieMrp').value=r.mrp;calcAmt();}
+  if(r.brand_id&&[...$('ieBrand').options].some(o=>o.value===r.brand_id))$('ieBrand').value=r.brand_id;
+  pickedVariant=r.erp_variant_id?{id:r.erp_variant_id,name:r.item_name}:null; $('ieQty').focus(); }
+
+/* ════════════ KEYBOARD SHORTCUTS ════════════ */
+// Enter (on entry fields) = Save & Next ; Ctrl/Cmd+Enter = Save (stay) ; Esc = clear row
+['ieItem','ieQty','ieMrp','ieReplItem','ieReplQty'].forEach(id=>{const el=$(id);el&&el.addEventListener('keydown',e=>{
+  if(e.key==='Enter'){ e.preventDefault(); if(e.ctrlKey||e.metaKey)saveItem(false); else saveItem(true); }
+  else if(e.key==='Escape'){ e.preventDefault(); clearRow(); }
+});});
+
+/* ════════════ VOICE ENTRY ════════════ */
+// "Tata Premium 1kg qty 20" -> item + qty, auto-fill, cursor next
+let recog=null;
+function startVoice(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){ toast('Is browser mein voice support nahi (Chrome try karo)'); return; }
+  const btn=$('voiceBtn');
+  if(recog){ try{recog.stop();}catch(_){} recog=null; btn.classList.remove('rec'); $('vstat').textContent=''; return; }
+  recog=new SR(); recog.lang='en-IN'; recog.interimResults=false; recog.maxAlternatives=1;
+  btn.classList.add('rec'); $('vstat').textContent='🎤 Sun raha hoon… bolo: "Tata Premium 1kg qty 20"';
+  recog.onresult=e=>{ const t=e.results[0][0].transcript; $('vstat').textContent='Suna: "'+t+'"'; parseVoice(t); window._lastEntryMethod='voice'; };
+  recog.onerror=e=>{ $('vstat').textContent='Voice error: '+e.error; };
+  recog.onend=()=>{ btn.classList.remove('rec'); recog=null; };
+  try{recog.start();}catch(_){}
+}
+function parseVoice(t){
+  // qty: after "qty"/"quantity"/"x" OR a trailing number
+  let qty=null, txt=t.trim();
+  let m=txt.match(/\b(?:qty|quantity|x|into|ginti)\s*([0-9]+)/i);
+  if(m){ qty=parseInt(m[1],10); txt=txt.replace(m[0],'').trim(); }
+  else { const m2=txt.match(/\s([0-9]+)\s*(?:packet|pcs|piece|pieces|nos)?$/i); if(m2){ qty=parseInt(m2[1],10); txt=txt.slice(0,m2.index).trim(); } }
+  if(txt) $('ieItem').value=txt;
+  if(qty&&qty>0) $('ieQty').value=qty;
+  pickedVariant=null; calcAmt();
+  // try ERP match in background
+  erpSuggest(txt);
+  $('ieMrp').focus(); // MRP daal ke Enter = save & next
+}
+
+/* ════════════ BARCODE SCAN (optional) ════════════ */
+async function scanBarcode(){
+  if(!('BarcodeDetector' in window)){ toast('Barcode scan is browser/phone pe support nahi — free-text use karo'); return; }
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
+    const v=document.createElement('video'); v.srcObject=stream; v.setAttribute('playsinline','true'); await v.play();
+    $('vstat').textContent='📷 Barcode camera ke saamne rakho…';
+    const det=new window.BarcodeDetector();
+    let tries=0;
+    const tick=async()=>{
+      tries++;
+      try{ const codes=await det.detect(v);
+        if(codes&&codes.length){ const code=codes[0].rawValue; stream.getTracks().forEach(t=>t.stop());
+          $('vstat').textContent='Barcode: '+code; await barcodeLookup(code); window._lastEntryMethod='scan'; return; }
+      }catch(_){}
+      if(tries<120) requestAnimationFrame(tick); else { stream.getTracks().forEach(t=>t.stop()); $('vstat').textContent='Barcode nahi mila — free-text use karo'; }
+    };
+    tick();
+  }catch(e){ toast('Camera nahi khula: '+(e.message||e)); }
+}
+async function barcodeLookup(code){
+  // optional: if ERP variants has a barcode, auto-load; else just put code as item ref
+  try{
+    const {data}=await sb.from('variants').select('*').or('barcode.eq.'+code+',ean.eq.'+code+',sku.eq.'+code).limit(1);
+    if(data&&data.length){ const v=data[0]; pickVariant({id:v.id,name:vName(v),mrp:v.mrp||v.price||''}); $('ieQty').focus(); return; }
+  }catch(_){}
+  $('ieItem').value=$('ieItem').value||('Barcode '+code); $('ieQty').focus();
+}
 
 function renderItems(){
   $('sCount').textContent=curItems.length;
@@ -559,6 +674,8 @@ async function loadBags(){
   let q=sb.from('mr_bags').select('*').eq('is_deleted',false).order('created_at',{ascending:false}).limit(100);
   if($('fSource').value)q=q.eq('source_type',$('fSource').value);
   if($('fStatus').value)q=q.eq('status',$('fStatus').value);
+  const bn=$('fBagNo')&&$('fBagNo').value.trim();
+  if(bn)q=q.ilike('bag_no','%'+bn+'%');
   const {data,error}=await q; if(error){toast(error.message);return;}
   $('bagList').innerHTML=(data||[]).map(b=>{const co=(companies.find(c=>c.id===b.company_id)||{}).name||'';
     return `<div class="card" style="cursor:pointer" onclick="openBag('${b.id}')">
@@ -625,7 +742,7 @@ async function reopenBag(id,no){
 async function report(kind){
   $('repOut').classList.remove('hide'); $('repBody').innerHTML='Loading…';
   const titles={company:'Company-wise Claim',brand:'Brand-wise Damage',item:'Item-wise Damage',bag:'Bag-wise',
-    pending:'Claim Pending',settled:'Claim Settled',opening:'Opening Damage',warehouse:'Warehouse Damage',staff:'Staff Productivity'};
+    pending:'Claim Pending',settled:'Claim Settled',opening:'Opening Damage',warehouse:'Warehouse Damage',market:'Market Return',staff:'Staff Productivity'};
   $('repTitle').textContent=titles[kind];
   try{
     if(kind==='company'){const {data}=await sb.from('v_mr_company_claim').select('*');
@@ -642,6 +759,7 @@ async function report(kind){
       let q=sb.from('mr_bags').select('*').eq('is_deleted',false);
       if(kind==='pending')q=q.eq('claim_status','PENDING'); if(kind==='settled')q=q.eq('claim_status','SETTLED');
       if(kind==='opening')q=q.eq('source_type','OPENING_DAMAGE'); if(kind==='warehouse')q=q.eq('source_type','WAREHOUSE_DAMAGE');
+      if(kind==='market')q=q.eq('source_type','MARKET_RETURN');
       const {data}=await q.order('created_at',{ascending:false}).limit(200);
       tbl(['Bag','Company','Qty','Value','Claim'],(data||[]).map(r=>[r.bag_no,(companies.find(c=>c.id===r.company_id)||{}).name||'',r.total_qty,money(r.total_value),r.claim_status]));
     }
@@ -658,6 +776,23 @@ async function loadUsers(){
   const {data}=await sb.from('mr_users').select('*').order('role');
   $('userList').innerHTML=(data||[]).map(u=>`<div class="it"><div class="nm"><b>${esc(u.name||u.mobile)}</b><small>${esc(u.mobile)} · ${u.is_active?'active':'inactive'}</small></div>
     <span class="badge ${u.role==='OWNER'?'b-owner':u.role==='MANAGER'?'b-manager':'b-staff'}">${u.role}</span></div>`).join('')||'<div class="muted">Koi user nahi</div>';
+  loadDevices();
+}
+async function loadDevices(){
+  const {data}=await sb.from('mr_devices').select('*').order('last_activity_at',{ascending:false}).limit(100);
+  $('deviceList').innerHTML=(data||[]).map(d=>`<div class="it">
+    <div class="nm"><b>${esc(d.device_name||'device')}</b><small>${esc(d.user_mobile)} · ${d.is_approved?'✅ approved':'⏳ pending'} · last: ${d.last_activity_at?new Date(d.last_activity_at).toLocaleString('en-IN'):'—'}</small></div>
+    ${d.is_approved
+      ? `<button class="btn btn-sm btn-red" onclick="setDevice('${d.id}',false)">Revoke</button>`
+      : `<button class="btn btn-sm btn-grn" onclick="setDevice('${d.id}',true)">Approve</button>`}
+  </div>`).join('')||'<div class="muted">Koi device nahi</div>';
+}
+async function setDevice(id,approve){
+  if(role!=='OWNER'){toast('Sirf Owner device approve kar sakta hai');return;}
+  const up=approve?{is_approved:true,approved_by_user_id:U.user_id,approved_by_name:U.user_name,approved_at:new Date().toISOString()}:{is_approved:false};
+  const {error}=await sb.from('mr_devices').update(up).eq('id',id); if(error){toast(error.message);return;}
+  logAct(approve?'APPROVE_DEVICE':'REVOKE_DEVICE','device',id,(approve?'Approved':'Revoked')+' device');
+  loadDevices(); toast(approve?'Device approved ✓':'Device revoked');
 }
 async function saveUser(){
   if(role!=='OWNER'&&!window._bootstrap){toast('Sirf Owner');return;}
