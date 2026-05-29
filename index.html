@@ -889,6 +889,8 @@ async function saveTxn(){
       const fWh=parseInt(document.getElementById('ti-fwh').value),tWh=parseInt(document.getElementById('ti-twh').value);
       if(!fWh||!tWh){toast('Dono WH select karo!');btn.disabled=false;btn.innerHTML='✅ SAVE & GENERATE VOUCHER';return;}
       if(fWh===tWh){toast('Same WH nahi!');btn.disabled=false;btn.innerHTML='✅ SAVE & GENERATE VOUCHER';return;}
+      /* BUG-1 FIX: prevent transferring more than source warehouse has */
+      {const _src=stockData.find(s=>s.variant_id===vid&&s.warehouse_id===fWh);const _avail=_src?(+_src.total_kg||0):0;if(qty>_avail){toast('❌ Source WH mein sirf '+_avail.toFixed(1)+' KG hai — '+qty+' KG transfer nahi ho sakta');btn.disabled=false;btn.innerHTML='✅ SAVE & GENERATE VOUCHER';return;}}
       const r=await db(()=>sb.from('stock_transactions').insert([{variant_id:vid,warehouse_id:fWh,transaction_type:'TRANSFER_OUT',qty,party_name:party||'Transfer',notes,ref_no:ref+'-O'},{variant_id:vid,warehouse_id:tWh,transaction_type:'TRANSFER_IN',qty,party_name:party||'Transfer',notes,ref_no:ref+'-I'}]).select('id'));
       if(r.error)throw new Error(r.error.msg);
       lastV={ref,type:'TRANSFER',date:new Date().toLocaleString('en-IN'),item:vRow?.products?.family_name||vRow?.variant_name||'',brand:vRow?.products?.brands?.name||'',vname:vRow?.variant_name||'',itemId:vRow?.item_id||'',sku:vRow?.sku||'',qty,unit:vRow?.unit||'KG',wh:(warehouses.find(w=>w.id===fWh)?.name||'')+' → '+(warehouses.find(w=>w.id===tWh)?.name||''),party:party||'—',notes:notes||'—',user:U?.name||'Staff'};
@@ -896,6 +898,8 @@ async function saveTxn(){
       const whId=parseInt(document.getElementById('ti-wh').value);
       if(!whId){toast('WH select karo!');btn.disabled=false;btn.innerHTML='✅ SAVE & GENERATE VOUCHER';return;}
       const txType=curTT==='INWARD'?'INWARD':curTT==='OUTWARD'?'OUTWARD':curTT==='DAMAGE'?'DAMAGE':curTT==='PACKING'?'PACKING':'CONVERSION';
+      /* BUG-1 FIX: prevent stock going negative on OUTWARD / DAMAGE (dispatch/loss) */
+      if(txType==='OUTWARD'||txType==='DAMAGE'){const _cur=stockData.find(s=>s.variant_id===vid&&s.warehouse_id===whId);const _avail=_cur?(+_cur.total_kg||0):0;if(qty>_avail){toast('❌ Stock kam hai! '+(warehouses.find(w=>w.id===whId)?.name||'WH')+' mein sirf '+_avail.toFixed(1)+' KG — '+curTT+' '+qty+' KG nahi ho sakta');btn.disabled=false;btn.innerHTML='✅ SAVE & GENERATE VOUCHER';return;}}
       const r=await db(()=>sb.from('stock_transactions').insert({variant_id:vid,warehouse_id:whId,transaction_type:txType,qty,party_name:party||null,notes,ref_no:ref}).select('id').single());
       if(r.error)throw new Error(r.error.msg);
       lastV={ref,type:curTT,date:new Date().toLocaleString('en-IN'),item:vRow?.products?.family_name||vRow?.variant_name||'',brand:vRow?.products?.brands?.name||'',vname:vRow?.variant_name||'',itemId:vRow?.item_id||'',sku:vRow?.sku||'',qty,unit:vRow?.unit||'KG',wh:warehouses.find(w=>w.id===whId)?.name||'',party:party||'—',notes:notes||'—',user:U?.name||'Staff'};
