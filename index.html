@@ -654,6 +654,7 @@ async function doLogin(){
   if(pin!=='1234'){e.textContent='Wrong PIN. Demo PIN: 1234';return;}
   U={name:ph.replace(/^\+91\s?/,'').slice(0,10)||'Staff',phone:ph,role:'staff'};
   try{const r=await db(()=>sb.from('users').select('*').eq('phone',ph).maybeSingle());if(r.data)U=r.data;}catch(_){}
+  try{localStorage.setItem('vtc-session',JSON.stringify(U));}catch(_){}/* BUG-2: persist session */
   document.getElementById('ls').style.display='none';
   document.getElementById('app').style.display='flex';
   document.getElementById('hu').textContent=U.name||'Staff';
@@ -662,6 +663,7 @@ async function doLogin(){
 }
 function doLogout(){
   U=null;if(rt)sb.removeChannel(rt);
+  try{localStorage.removeItem('vtc-session');}catch(_){}/* BUG-2: clear session */
   document.getElementById('app').style.display='none';
   document.getElementById('ls').style.display='flex';
   document.getElementById('lp').value='';document.getElementById('lpin').value='';
@@ -1175,6 +1177,21 @@ function nav(name){
 }
 
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.style.display='block';clearTimeout(t._t);t._t=setTimeout(()=>t.style.display='none',3200);}
+
+/* ══ BUG-2: SESSION RESTORE ON LOAD ══════════ */
+function restoreSession(){
+  try{
+    const s=localStorage.getItem('vtc-session');if(!s)return;
+    const u=JSON.parse(s);if(!u||!u.phone)return;
+    U=u;
+    document.getElementById('ls').style.display='none';
+    document.getElementById('app').style.display='flex';
+    document.getElementById('hu').textContent=U.name||'Staff';
+    document.getElementById('h-role').textContent=(U.role||'staff').toUpperCase();
+    initApp();
+  }catch(_){}
+}
+restoreSession();
 </script>
 </body>
 </html>
