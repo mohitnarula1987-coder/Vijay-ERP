@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Damage & Claim — Vijay Trading</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<style>
+:root{
+  --bg:#0a0e1a; --bg2:#0f1525; --card:#131b30; --card2:#18233d;
+  --line:#22304f; --txt:#e6edff; --mut:#8aa0c8; --cyan:#00e5ff; --cyan2:#00b8cc;
+  --grn:#22c55e; --red:#ef4444; --gold:#f5a623; --vio:#a78bfa;
+  --r:14px; --sh:0 8px 30px rgba(0,0,0,.45);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:radial-gradient(1200px 600px at 70% -10%,#13203c 0%,var(--bg) 55%);
+  color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;min-height:100vh}
+a{color:var(--cyan)}
+.hide{display:none!important}
+/* header */
+header{position:sticky;top:0;z-index:40;background:rgba(10,14,26,.92);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--line);padding:10px 14px;display:flex;align-items:center;gap:10px}
+.logo{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#0a0e1a,#16213c);
+  border:1px solid var(--cyan);display:grid;place-items:center;color:var(--cyan);font-weight:800;font-size:13px}
+.h-t{font-weight:800;letter-spacing:.3px;font-size:15px;line-height:1}
+.h-s{font-size:10px;color:var(--mut);letter-spacing:1.5px;text-transform:uppercase}
+.h-right{margin-left:auto;display:flex;align-items:center;gap:8px}
+.badge{font-size:10px;font-weight:800;letter-spacing:.5px;padding:4px 8px;border-radius:20px;border:1px solid var(--line)}
+.b-owner{color:var(--gold);border-color:#5a4a1f;background:#241d0c}
+.b-manager{color:var(--vio);border-color:#3b3270;background:#1a1640}
+.b-staff{color:var(--cyan);border-color:#1f4a55;background:#0c2128}
+.u-name{font-size:12px;color:var(--mut);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* nav */
+nav{display:flex;gap:4px;padding:8px 10px;overflow-x:auto;border-bottom:1px solid var(--line);background:var(--bg2)}
+.tab{flex:0 0 auto;padding:9px 14px;border-radius:10px;font-size:13px;font-weight:700;color:var(--mut);
+  background:transparent;border:1px solid transparent;cursor:pointer;white-space:nowrap}
+.tab.on{color:var(--cyan);background:var(--card);border-color:var(--line)}
+/* layout */
+main{padding:14px;max-width:880px;margin:0 auto;padding-bottom:60px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:12px;box-shadow:var(--sh)}
+.card h3{margin:0 0 10px;font-size:13px;letter-spacing:.5px;text-transform:uppercase;color:var(--mut)}
+label{display:block;font-size:11px;color:var(--mut);margin:8px 0 4px;letter-spacing:.4px;text-transform:uppercase}
+input,select,textarea{width:100%;padding:12px;background:var(--bg2);border:1px solid var(--line);border-radius:10px;
+  color:var(--txt);font-size:15px;outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--cyan)}
+.row{display:flex;gap:8px}.row>*{flex:1}
+.btn{padding:12px 14px;border-radius:11px;border:1px solid var(--line);background:var(--card2);color:var(--txt);
+  font-weight:700;font-size:14px;cursor:pointer}
+.btn:active{transform:scale(.98)}
+.btn-cyan{background:linear-gradient(135deg,var(--cyan),var(--cyan2));color:#04222a;border:none}
+.btn-grn{background:var(--grn);color:#05210f;border:none}
+.btn-red{background:transparent;color:var(--red);border-color:#5a1f1f}
+.btn-ghost{background:transparent}
+.btn-sm{padding:7px 10px;font-size:12px;border-radius:9px}
+.btn-block{width:100%}
+.src-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.src{padding:12px 6px;border-radius:11px;border:1px solid var(--line);background:var(--bg2);text-align:center;cursor:pointer;font-size:12px;font-weight:700}
+.src.on{border-color:var(--cyan);background:#0c2128;color:var(--cyan)}
+.src small{display:block;color:var(--mut);font-weight:500;font-size:10px;margin-top:2px}
+.qtybar{display:flex;gap:8px;align-items:stretch}
+.qtybar .qbtn{flex:0 0 54px;font-size:22px;font-weight:800;display:grid;place-items:center}
+.qtybar input{flex:1;text-align:center;font-size:22px;font-weight:800}
+.amt{font-size:13px;color:var(--grn);font-weight:800;margin-top:6px}
+.pill{display:inline-block;font-size:10px;font-weight:800;padding:3px 8px;border-radius:20px;border:1px solid var(--line);color:var(--mut)}
+.p-open{color:var(--cyan);border-color:#1f4a55}.p-closed{color:var(--mut)}
+.p-pending{color:var(--gold);border-color:#5a4a1f}.p-settled{color:var(--grn);border-color:#1f5a33}
+.list .it{display:flex;align-items:center;gap:8px;padding:10px;border:1px solid var(--line);border-radius:10px;margin-bottom:6px;background:var(--bg2)}
+.it .nm{flex:1;min-width:0}.it .nm b{font-size:14px}.it .nm small{display:block;color:var(--mut);font-size:11px}
+.it .q{font-weight:800;color:var(--cyan);font-size:13px;white-space:nowrap}
+.sum{display:flex;gap:10px;margin-top:6px}
+.sum .s{flex:1;background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:10px;text-align:center}
+.sum .s b{display:block;font-size:18px;color:var(--cyan)}.sum .s small{color:var(--mut);font-size:10px;text-transform:uppercase}
+.thumbs{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.thumbs img{width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid var(--line)}
+.notice{font-size:12px;color:var(--gold);background:#241d0c;border:1px solid #5a4a1f;border-radius:9px;padding:8px 10px;margin-bottom:10px}
+.muted{color:var(--mut);font-size:12px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line)}
+th{color:var(--mut);font-size:11px;text-transform:uppercase}
+td.r,th.r{text-align:right}
+/* modal */
+.ov{position:fixed;inset:0;background:rgba(4,8,18,.8);z-index:60;display:none;align-items:flex-end;justify-content:center}
+.ov.show{display:flex}
+.sheet{background:var(--card);border:1px solid var(--line);border-radius:18px 18px 0 0;width:100%;max-width:880px;max-height:90vh;overflow:auto;padding:16px}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#0c1426;border:1px solid var(--line);
+  color:var(--txt);padding:12px 18px;border-radius:30px;font-size:13px;z-index:90;display:none;box-shadow:var(--sh);max-width:90%}
+.gate{min-height:80vh;display:grid;place-items:center;text-align:center;padding:30px}
+.gate .logo{width:60px;height:60px;font-size:20px;margin:0 auto 16px}
+@media(max-width:520px){.src-grid{grid-template-columns:repeat(3,1fr)}}
+</style>
+</head>
+<body>
+
+<!-- ====== GATE (no ERP session) ====== -->
+<div id="gate" class="gate hide">
+  <div>
+    <div class="logo">VT</div>
+    <h2 style="margin:0 0 8px">Damage & Claim</h2>
+    <p class="muted" style="max-width:320px">Pehle Vijay ERP mein login karein. Yeh module wahi login use karta hai (alag password nahi).</p>
+    <a class="btn btn-cyan btn-block" style="display:inline-block;margin-top:14px;text-decoration:none" href="index.html">→ ERP Login kholo</a>
+    <p class="muted" style="margin-top:14px">Login ke baad, wapas is page pe aayein.</p>
+  </div>
+</div>
+
+<!-- ====== APP ====== -->
+<div id="app" class="hide">
+<header>
+  <div class="logo">VT</div>
+  <div><div class="h-t">Damage & Claim</div><div class="h-s">Phase A · Isolated</div></div>
+  <div class="h-right">
+    <span id="uname" class="u-name"></span>
+    <span id="ubadge" class="badge b-staff">STAFF</span>
+  </div>
+</header>
+
+<nav id="nav">
+  <div class="tab on" data-t="entry">＋ New Entry</div>
+  <div class="tab" data-t="bags">📦 Bags</div>
+  <div class="tab" data-t="reports">📊 Reports</div>
+  <div class="tab tab-owner hide" data-t="users">👥 Users</div>
+</nav>
+
+<main>
+  <!-- ===== NEW ENTRY ===== -->
+  <section id="p-entry">
+    <!-- bag setup -->
+    <div id="bagSetup" class="card">
+      <h3>New Bag</h3>
+      <label>Company *</label>
+      <div class="row">
+        <select id="seCompany"></select>
+        <button class="btn btn-sm" style="flex:0 0 auto" onclick="addCompany()">+ Add</button>
+      </div>
+      <label>Source Type *</label>
+      <div class="src-grid">
+        <div class="src on" data-src="MARKET_RETURN">Market Return<small>retailer se</small></div>
+        <div class="src" data-src="OPENING_DAMAGE">Opening Damage<small>purana stock</small></div>
+        <div class="src" data-src="WAREHOUSE_DAMAGE">Warehouse<small>andar ka</small></div>
+      </div>
+      <div id="whWrap" class="hide">
+        <label>Warehouse</label><select id="seWh"></select>
+      </div>
+      <label>Retailer (optional)</label>
+      <input id="seRetailer" placeholder="Naam (optional)">
+      <button class="btn btn-cyan btn-block" style="margin-top:12px" onclick="startBag()">Start Bag →</button>
+    </div>
+
+    <!-- active bag -->
+    <div id="bagActive" class="hide">
+      <div class="card" style="display:flex;align-items:center;gap:10px">
+        <div>
+          <div style="font-weight:800;font-size:18px" id="abNo">BAG-—</div>
+          <div class="muted" id="abMeta">—</div>
+        </div>
+        <span class="pill p-open" style="margin-left:auto">OPEN</span>
+      </div>
+
+      <!-- fast entry -->
+      <div class="card">
+        <h3>Add Item (fast)</h3>
+        <label>Brand</label>
+        <div class="row">
+          <select id="ieBrand"></select>
+          <button class="btn btn-sm" style="flex:0 0 auto" onclick="addBrand()">+ Add</button>
+        </div>
+        <label>Item <span class="muted" style="text-transform:none">— type free text, ya ERP search</span></label>
+        <input id="ieItem" placeholder="Item naam (free text)" autocomplete="off" oninput="erpSuggest(this.value)">
+        <div id="sugg" class="list" style="margin-top:6px"></div>
+        <div id="whReasonWrap" class="hide">
+          <label>Reason (warehouse damage)</label>
+          <select id="ieReason">
+            <option value="">—</option><option>Breakage</option><option>Leakage</option>
+            <option>Expiry</option><option>Rodent</option><option>Handling</option><option>Other</option>
+          </select>
+        </div>
+        <div class="row">
+          <div style="flex:1.3">
+            <label>Qty</label>
+            <div class="qtybar">
+              <button class="btn qbtn" onclick="bumpQty(-1)">−</button>
+              <input id="ieQty" type="number" inputmode="numeric" value="1" min="0" step="1">
+              <button class="btn qbtn" onclick="bumpQty(1)">＋</button>
+            </div>
+          </div>
+          <div>
+            <label>MRP ₹</label>
+            <input id="ieMrp" type="number" inputmode="decimal" value="" placeholder="0" oninput="calcAmt()">
+            <div class="amt" id="ieAmt">Amount ₹0.00</div>
+          </div>
+        </div>
+        <label style="display:flex;align-items:center;gap:8px;text-transform:none;font-size:13px;color:var(--txt)">
+          <input type="checkbox" id="ieRepl" style="width:auto" onchange="toggleRepl()"> Replacement diya? (record only — stock deduct nahi)
+        </label>
+        <div id="replWrap" class="hide">
+          <div class="row">
+            <div><label>Replacement Item</label><input id="ieReplItem" placeholder="item"></div>
+            <div style="flex:.6"><label>Qty</label><input id="ieReplQty" type="number" value=""></div>
+          </div>
+          <label>Warehouse (se nikalega — future)</label><select id="ieReplWh"></select>
+        </div>
+        <button class="btn btn-grn btn-block" style="margin-top:12px" onclick="saveItem()">Save &amp; Next ⏎</button>
+      </div>
+
+      <!-- this bag items -->
+      <div class="card">
+        <h3>Is bag ke items</h3>
+        <div class="sum">
+          <div class="s"><b id="sCount">0</b><small>Items</small></div>
+          <div class="s"><b id="sQty">0</b><small>Total Qty</small></div>
+          <div class="s"><b id="sVal">₹0</b><small>Total Value</small></div>
+        </div>
+        <div id="bagItems" class="list" style="margin-top:10px"></div>
+      </div>
+
+      <!-- photos + close -->
+      <div class="card">
+        <h3>Photos (close ke liye zaroori)</h3>
+        <input type="file" id="phInput" accept="image/*" capture="environment" multiple onchange="uploadPhotos(this.files)">
+        <div id="thumbs" class="thumbs"></div>
+        <button class="btn btn-cyan btn-block" style="margin-top:14px" onclick="closeBag()">Close Bag + PDF 🏷️</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== BAGS ===== -->
+  <section id="p-bags" class="hide">
+    <div class="card">
+      <h3>Bags</h3>
+      <div class="row">
+        <select id="fSource"><option value="">All sources</option><option value="MARKET_RETURN">Market Return</option>
+          <option value="OPENING_DAMAGE">Opening Damage</option><option value="WAREHOUSE_DAMAGE">Warehouse</option></select>
+        <select id="fStatus"><option value="">All status</option><option value="OPEN">Open</option><option value="CLOSED">Closed</option></select>
+      </div>
+      <button class="btn btn-sm btn-block" style="margin-top:8px" onclick="loadBags()">Refresh</button>
+    </div>
+    <div id="bagList"></div>
+  </section>
+
+  <!-- ===== REPORTS ===== -->
+  <section id="p-reports" class="hide">
+    <div class="card">
+      <h3>Reports</h3>
+      <div class="src-grid" style="grid-template-columns:repeat(2,1fr)">
+        <div class="src" onclick="report('company')">Company-wise</div>
+        <div class="src" onclick="report('brand')">Brand-wise</div>
+        <div class="src" onclick="report('item')">Item-wise</div>
+        <div class="src" onclick="report('bag')">Bag-wise</div>
+        <div class="src" onclick="report('pending')">Claim Pending</div>
+        <div class="src" onclick="report('settled')">Claim Settled</div>
+        <div class="src" onclick="report('opening')">Opening Damage</div>
+        <div class="src" onclick="report('warehouse')">Warehouse Damage</div>
+        <div class="src" onclick="report('staff')">Staff Productivity</div>
+      </div>
+    </div>
+    <div id="repOut" class="card hide"><h3 id="repTitle"></h3><div id="repBody"></div></div>
+  </section>
+
+  <!-- ===== USERS (owner) ===== -->
+  <section id="p-users" class="hide">
+    <div id="bootNotice" class="notice hide">Setup mode: koi user nahi mila. Aap (owner) yahan users + roles add karein.</div>
+    <div class="card">
+      <h3>Add / Update User</h3>
+      <div class="row"><div><label>Mobile</label><input id="uMobile" placeholder="10-digit"></div>
+        <div><label>Name</label><input id="uN" placeholder="naam"></div></div>
+      <label>Role</label>
+      <select id="uRole"><option>STAFF</option><option>MANAGER</option><option>OWNER</option></select>
+      <button class="btn btn-cyan btn-block" style="margin-top:10px" onclick="saveUser()">Save User</button>
+    </div>
+    <div class="card"><h3>Users</h3><div id="userList"></div></div>
+  </section>
+</main>
+</div>
+
+<!-- modal + toast -->
+<div id="ov" class="ov"><div class="sheet" id="sheet"></div></div>
+<div id="toast" class="toast"></div>
+
+<script>
+/* ════════════ CONFIG ════════════ */
+const SUPA_URL='https://vbprpviyhyqllmaodejz.supabase.co';
+const SUPA_KEY='sb_publishable_7E5EVnRSIeQ4w2oxtmzutQ_YVGsLydc';
+const BUCKET='mr-bag-photos';
+const sb=supabase.createClient(SUPA_URL,SUPA_KEY);
+
+/* ════════════ STATE ════════════ */
+let U=null;            // {user_id,user_name,mobile}
+let role='STAFF';
+let deviceId='', deviceName='';
+let companies=[], brands=[], warehouses=[];
+let curBag=null;       // active bag row
+let curItems=[];       // items in active bag
+let curPhotos=[];      // photos in active bag
+let pickedVariant=null;// {id,name} when ERP item chosen
+
+/* ════════════ HELPERS ════════════ */
+const $=id=>document.getElementById(id);
+function toast(m){const t=$('toast');t.textContent=m;t.style.display='block';clearTimeout(t._t);t._t=setTimeout(()=>t.style.display='none',3200);}
+function money(n){return '₹'+(Number(n||0)).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});}
+function esc(s){return (s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function audit(extra){return Object.assign({created_by_user_id:U.user_id,created_by_name:U.user_name,created_device:deviceName},extra||{});}
+async function logAct(action,refType,refId,desc,changes){
+  try{await sb.from('mr_activity_log').insert({user_id:U.user_id,user_name:U.user_name,device_id:deviceId,device_info:deviceName,
+    action_type:action,reference_type:refType,reference_id:refId,description:desc,changes:changes||null});}catch(e){console.warn('log',e);}
+}
+function can(perm){ // permissions
+  if(role==='OWNER')return true;
+  if(role==='MANAGER')return perm!=='manage_users';
+  return ['add','edit_own'].includes(perm); // STAFF: cannot reopen/delete/settle/manage_users
+}
+
+/* ════════════ BOOT ════════════ */
+async function boot(){
+  // identity from ERP session (read-only reuse)
+  let sess=null; try{sess=JSON.parse(localStorage.getItem('vtc-session')||'null');}catch(e){}
+  if(!sess||!sess.phone){ $('gate').classList.remove('hide'); return; }
+  U={user_id:(sess.id||sess.phone),user_name:(sess.name||'Staff'),mobile:String(sess.phone).replace(/^\+?91/,'').trim()};
+  // device
+  deviceId=localStorage.getItem('mr-device-id')||(crypto.randomUUID?crypto.randomUUID():('dev-'+Date.now()+Math.random()));
+  localStorage.setItem('mr-device-id',deviceId);
+  deviceName=navigator.platform+' · '+(navigator.userAgent.match(/(iphone|ipad|android|windows|mac|linux)/i)||['web'])[0];
+  await resolveRole();
+  await registerDevice();
+  $('app').classList.remove('hide');
+  $('uname').textContent=U.user_name;
+  const b=$('ubadge'); b.textContent=role; b.className='badge '+(role==='OWNER'?'b-owner':role==='MANAGER'?'b-manager':'b-staff');
+  if(role==='OWNER'){document.querySelectorAll('.tab-owner').forEach(t=>t.classList.remove('hide'));}
+  await loadMasters();
+  onSrcChange();
+  // QR deep-link: ?bag=BAG-000001
+  const bag=new URLSearchParams(location.search).get('bag');
+  if(bag){ switchTab('bags'); openBagByNo(bag); }
+}
+async function resolveRole(){
+  try{
+    const {data,error}=await sb.from('mr_users').select('*');
+    if(error)throw error;
+    if(!data||data.length===0){ role='OWNER'; window._bootstrap=true; return; } // first-ever: setup mode
+    const me=data.find(u=>String(u.mobile).replace(/^\+?91/,'').trim()===U.mobile);
+    role = me && me.is_active ? me.role : 'STAFF';
+    if(me){ sb.from('mr_users').update({last_login_at:new Date().toISOString(),last_activity_at:new Date().toISOString()}).eq('id',me.id).then(()=>{}); }
+  }catch(e){ role='STAFF'; console.warn('role',e); }
+}
+async function registerDevice(){
+  try{
+    const {data}=await sb.from('mr_devices').select('*').eq('user_mobile',U.mobile).eq('device_id',deviceId).maybeSingle();
+    const now=new Date().toISOString();
+    if(!data){ const cnt=await sb.from('mr_devices').select('id',{count:'exact',head:true}).eq('user_mobile',U.mobile);
+      const first=((cnt.count||0)===0);
+      await sb.from('mr_devices').insert({user_mobile:U.mobile,device_id:deviceId,device_name:deviceName,is_approved:first,first_seen_at:now,last_login_at:now,last_activity_at:now});
+    }else{ await sb.from('mr_devices').update({last_login_at:now,last_activity_at:now}).eq('id',data.id); }
+  }catch(e){console.warn('device',e);}
+}
+
+/* ════════════ MASTERS ════════════ */
+async function loadMasters(){
+  const [c,b,w]=await Promise.all([
+    sb.from('mr_companies').select('*').eq('is_deleted',false).order('name'),
+    sb.from('mr_brands').select('*').eq('is_deleted',false).order('name'),
+    sb.from('warehouses').select('*').order('id').then(r=>r,()=>({data:[]}))
+  ]);
+  companies=c.data||[]; brands=b.data||[]; warehouses=(w&&w.data)||[];
+  fillSel('seCompany',companies,'name');
+  const wopts=warehouses.map(x=>`<option value="${esc(x.id)}">${esc(x.name||('WH '+x.id))}</option>`).join('');
+  $('seWh').innerHTML='<option value="">—</option>'+wopts;
+  $('ieReplWh').innerHTML='<option value="">—</option>'+wopts;
+  refreshBrandSel();
+}
+function fillSel(id,arr,key){ $(id).innerHTML=arr.map(x=>`<option value="${esc(x.id)}">${esc(x[key])}</option>`).join(''); }
+function refreshBrandSel(){
+  const cid=$('seCompany').value;
+  const bs=brands.filter(b=>b.company_id===cid);
+  $('ieBrand').innerHTML='<option value="">—</option>'+bs.map(b=>`<option value="${esc(b.id)}">${esc(b.name)}</option>`).join('');
+}
+$('seCompany')&&$('seCompany').addEventListener('change',refreshBrandSel);
+
+async function addCompany(){
+  const name=prompt('Company naam (e.g. Tata Consumer):'); if(!name)return;
+  const {data,error}=await sb.from('mr_companies').insert(audit({name:name.trim()})).select().single();
+  if(error){toast('Error: '+error.message);return;}
+  companies.push(data); fillSel('seCompany',companies,'name'); $('seCompany').value=data.id; refreshBrandSel();
+  logAct('ADD_COMPANY','company',data.id,'Added company '+name);
+  toast('Company added ✓');
+}
+async function addBrand(){
+  const cid=$('seCompany').value; if(!cid){toast('Pehle company chuno');return;}
+  const name=prompt('Brand naam (e.g. Tata Salt):'); if(!name)return;
+  const {data,error}=await sb.from('mr_brands').insert(audit({company_id:cid,name:name.trim()})).select().single();
+  if(error){toast('Error: '+error.message);return;}
+  brands.push(data); refreshBrandSel(); $('ieBrand').value=data.id;
+  logAct('ADD_BRAND','brand',data.id,'Added brand '+name);
+  toast('Brand added ✓');
+}
+
+/* ════════════ SOURCE / SETUP ════════════ */
+let curSrc='MARKET_RETURN';
+document.querySelectorAll('.src[data-src]').forEach(el=>el.addEventListener('click',()=>{
+  document.querySelectorAll('.src[data-src]').forEach(s=>s.classList.remove('on'));
+  el.classList.add('on'); curSrc=el.dataset.src; onSrcChange();
+}));
+function onSrcChange(){
+  $('whWrap').classList.toggle('hide',curSrc!=='WAREHOUSE_DAMAGE');
+  $('whReasonWrap')&&$('whReasonWrap').classList.toggle('hide',curSrc!=='WAREHOUSE_DAMAGE');
+  const r=$('seRetailer');
+  if(curSrc==='OPENING_DAMAGE'){r.value='Opening Stock';}
+  else if(curSrc==='WAREHOUSE_DAMAGE'){r.value='NA';}
+  else if(r.value==='Opening Stock'||r.value==='NA'){r.value='';}
+}
+
+/* ════════════ BAG LIFECYCLE ════════════ */
+async function startBag(){
+  const cid=$('seCompany').value; if(!cid){toast('Company chuno');return;}
+  let bagNo; try{const {data,error}=await sb.rpc('mr_next_bag_no'); if(error)throw error; bagNo=data;}
+  catch(e){toast('Bag no error: '+e.message);return;}
+  const ins=audit({bag_no:bagNo,company_id:cid,source_type:curSrc,
+    retailer_name:$('seRetailer').value.trim()||null, warehouse_id:(curSrc==='WAREHOUSE_DAMAGE'?($('seWh').value||null):null),
+    status:'OPEN'});
+  const {data,error}=await sb.from('mr_bags').insert(ins).select().single();
+  if(error){toast('Error: '+error.message);return;}
+  curBag=data; curItems=[]; curPhotos=[];
+  logAct('OPEN_BAG','bag',data.id,'Opened '+bagNo);
+  $('bagSetup').classList.add('hide'); $('bagActive').classList.remove('hide');
+  const co=companies.find(c=>c.id===cid);
+  $('abNo').textContent=bagNo; $('abMeta').textContent=(co?co.name:'')+' · '+curSrc.replace('_',' ');
+  refreshBrandSel(); renderItems(); renderThumbs(); $('ieItem').focus();
+  toast('Bag '+bagNo+' shuru ✓');
+}
+
+function bumpQty(d){const q=$('ieQty');let v=parseInt(q.value||'0',10)+d;if(v<0)v=0;q.value=v;calcAmt();}
+function calcAmt(){const q=parseFloat($('ieQty').value||0),m=parseFloat($('ieMrp').value||0);$('ieAmt').textContent='Amount '+money(q*m);}
+function toggleRepl(){$('replWrap').classList.toggle('hide',!$('ieRepl').checked);}
+
+/* ERP item search (best-effort; free-text always works) */
+let suggT=null;
+function erpSuggest(q){ pickedVariant=null; clearTimeout(suggT); if(!q||q.length<2){$('sugg').innerHTML='';return;}
+  suggT=setTimeout(async()=>{
+    try{const {data}=await sb.from('variants').select('*').limit(8).ilike('name','%'+q+'%');
+      const rows=(data||[]); if(!rows.length){$('sugg').innerHTML='';return;}
+      $('sugg').innerHTML=rows.map(r=>{const nm=vName(r);return `<div class="it" style="cursor:pointer" onclick='pickVariant(${JSON.stringify({id:r.id,name:nm,mrp:r.mrp||r.price||""}).replace(/'/g,"&#39;")})'><div class="nm"><b>${esc(nm)}</b><small>ERP item</small></div></div>`;}).join('');
+    }catch(e){$('sugg').innerHTML='';}
+  },250);
+}
+function vName(r){return r.name||r.item_name||r.variant_name||r.title||r.sku||r.code||('Item '+r.id);}
+function pickVariant(v){pickedVariant=v;$('ieItem').value=v.name;$('sugg').innerHTML='';if(v.mrp){$('ieMrp').value=v.mrp;calcAmt();}}
+
+async function saveItem(){
+  if(!curBag){toast('Bag nahi khula');return;}
+  const name=$('ieItem').value.trim(); if(!name){toast('Item likho');return;}
+  const qty=parseFloat($('ieQty').value||0); if(!(qty>0)){toast('Qty > 0 chahiye');return;}
+  const mrp=parseFloat($('ieMrp').value||0); if(mrp<0){toast('MRP galat');return;}
+  const bid=$('ieBrand').value;
+  const row=audit({bag_id:curBag.id, brand_id:bid||null, brand_name:(brands.find(b=>b.id===bid)||{}).name||null,
+    erp_variant_id:pickedVariant?String(pickedVariant.id):null, item_name:name, is_free_text:!pickedVariant,
+    unit:'pcs', qty:qty, mrp:mrp,
+    reason:(curSrc==='WAREHOUSE_DAMAGE'?($('ieReason').value||null):null),
+    replacement_given:$('ieRepl').checked,
+    replacement_item_name:$('ieRepl').checked?($('ieReplItem').value.trim()||null):null,
+    replacement_warehouse_id:$('ieRepl').checked?($('ieReplWh').value||null):null,
+    replacement_qty:$('ieRepl').checked?parseFloat($('ieReplQty').value||0)||null:null,
+    entry_method:'manual'});
+  const {data,error}=await sb.from('mr_items').insert(row).select().single();
+  if(error){toast('Error: '+error.message);return;}
+  curItems.unshift(data);
+  logAct('ADD_ITEM','item',data.id,'Added '+name+' x'+qty+' to '+curBag.bag_no);
+  // reset item fields, keep brand/source
+  $('ieItem').value='';$('ieQty').value='1';$('ieMrp').value='';$('ieAmt').textContent='Amount ₹0.00';
+  pickedVariant=null;$('sugg').innerHTML='';
+  if($('ieRepl').checked){$('ieRepl').checked=false;toggleRepl();$('ieReplItem').value='';$('ieReplQty').value='';}
+  renderItems(); $('ieItem').focus();
+  toast('Saved ✓ next…');
+}
+// Enter key = Save & Next
+['ieItem','ieQty','ieMrp'].forEach(id=>{const el=$(id);el&&el.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();saveItem();}});});
+
+function renderItems(){
+  $('sCount').textContent=curItems.length;
+  const q=curItems.reduce((a,i)=>a+Number(i.qty||0),0);
+  const v=curItems.reduce((a,i)=>a+Number(i.amount||0),0);
+  $('sQty').textContent=q; $('sVal').textContent=money(v);
+  $('bagItems').innerHTML=curItems.map(i=>`<div class="it">
+    <div class="nm"><b>${esc(i.item_name)}</b><small>${esc(i.brand_name||'')}${i.replacement_given?' · 🔁 repl':''}${i.reason?' · '+esc(i.reason):''}</small></div>
+    <div class="q">${i.qty} × ${money(i.mrp)}<br>${money(i.amount)}</div>
+    <button class="btn btn-sm btn-red" onclick="delItem('${i.id}')">✕</button>
+  </div>`).join('')||'<div class="muted">Abhi koi item nahi.</div>';
+}
+async function delItem(id){
+  if(!can('edit_own')&&role==='STAFF'){} // allow staff to remove just-added? business: staff cannot delete records
+  if(role==='STAFF'){toast('Staff item delete nahi kar sakta');return;}
+  if(!confirm('Item hatayein?'))return;
+  const {error}=await sb.from('mr_items').update({is_deleted:true,deleted_by_user_id:U.user_id,deleted_by_name:U.user_name,deleted_at:new Date().toISOString()}).eq('id',id);
+  if(error){toast(error.message);return;}
+  curItems=curItems.filter(i=>i.id!==id);
+  logAct('DELETE_ITEM','item',id,'Soft-deleted item');
+  renderItems(); toast('Removed');
+}
+
+/* ════════════ PHOTOS ════════════ */
+async function uploadPhotos(files){
+  if(!curBag){toast('Bag nahi khula');return;}
+  for(const f of files){
+    try{
+      const path=curBag.bag_no+'/'+Date.now()+'_'+f.name.replace(/[^\w.\-]/g,'_');
+      const up=await sb.storage.from(BUCKET).upload(path,f,{upsert:false});
+      if(up.error)throw up.error;
+      const pub=sb.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
+      const {data,error}=await sb.from('mr_bag_photos').insert({bag_id:curBag.id,storage_path:path,public_url:pub,
+        file_name:f.name,mime_type:f.type,size_bytes:f.size,uploaded_by_user_id:U.user_id,uploaded_by_name:U.user_name,uploaded_device:deviceName}).select().single();
+      if(error)throw error;
+      curPhotos.push(data); logAct('UPLOAD_PHOTO','photo',data.id,'Photo on '+curBag.bag_no);
+    }catch(e){toast('Photo error: '+(e.message||e));}
+  }
+  renderThumbs(); $('phInput').value='';
+}
+function renderThumbs(){ $('thumbs').innerHTML=curPhotos.map(p=>`<img src="${esc(p.public_url)}" alt="">`).join(''); }
+
+/* ════════════ CLOSE BAG + PDF ════════════ */
+async function closeBag(){
+  if(!curBag){return;}
+  if(curItems.length===0){toast('Bag khaali hai');return;}
+  if(curPhotos.length===0){toast('Kam se kam 1 photo zaroori');return;}
+  if(!confirm('Bag close karein? Photos lock ho jayengi.'))return;
+  const now=new Date().toISOString();
+  const {error}=await sb.from('mr_bags').update({status:'CLOSED',closed_by_user_id:U.user_id,closed_by_name:U.user_name,closed_at:now,updated_at:now}).eq('id',curBag.id);
+  if(error){toast(error.message);return;}
+  logAct('CLOSE_BAG','bag',curBag.id,'Closed '+curBag.bag_no+' ('+curItems.length+' items)');
+  await makePDF(curBag,curItems);
+  toast('Bag closed ✓');
+  // reset
+  curBag=null;curItems=[];curPhotos=[];
+  $('bagActive').classList.add('hide');$('bagSetup').classList.remove('hide');
+}
+async function makePDF(bag,items){
+  try{
+    const {jsPDF}=window.jspdf; const doc=new jsPDF({unit:'mm',format:'a5'});
+    const co=(companies.find(c=>c.id===bag.company_id)||{}).name||'';
+    const tQty=items.reduce((a,i)=>a+Number(i.qty||0),0), tVal=items.reduce((a,i)=>a+Number(i.amount||0),0);
+    doc.setFontSize(18);doc.text('DAMAGE BAG LABEL',10,14);
+    doc.setFontSize(22);doc.setTextColor(0,150,170);doc.text(bag.bag_no,10,24);doc.setTextColor(0,0,0);
+    doc.setFontSize(11);
+    doc.text('Company: '+co,10,34);
+    doc.text('Source: '+bag.source_type.replace('_',' '),10,40);
+    doc.text('Date: '+new Date().toLocaleString('en-IN'),10,46);
+    doc.text('Total Qty: '+tQty,10,52);
+    doc.text('Total Value: Rs '+tVal.toFixed(2),10,58);
+    // QR -> bag detail deep link
+    const qrUrl=location.origin+location.pathname+'?bag='+encodeURIComponent(bag.bag_no);
+    const qr=await QRCode.toDataURL(qrUrl,{width:240,margin:1});
+    doc.addImage(qr,'PNG',95,30,40,40);
+    doc.setFontSize(8);doc.text('Scan = bag details',95,73);
+    doc.setFontSize(9);doc.text('Items:',10,68);
+    let y=74; items.slice(0,18).forEach(i=>{doc.text('• '+(i.item_name||'').slice(0,40)+'  x'+i.qty,10,y);y+=5;});
+    doc.save(bag.bag_no+'.pdf');
+  }catch(e){toast('PDF error: '+(e.message||e));}
+}
+
+/* ════════════ BAGS LIST + DETAIL ════════════ */
+async function loadBags(){
+  let q=sb.from('mr_bags').select('*').eq('is_deleted',false).order('created_at',{ascending:false}).limit(100);
+  if($('fSource').value)q=q.eq('source_type',$('fSource').value);
+  if($('fStatus').value)q=q.eq('status',$('fStatus').value);
+  const {data,error}=await q; if(error){toast(error.message);return;}
+  $('bagList').innerHTML=(data||[]).map(b=>{const co=(companies.find(c=>c.id===b.company_id)||{}).name||'';
+    return `<div class="card" style="cursor:pointer" onclick="openBag('${b.id}')">
+      <div style="display:flex;align-items:center;gap:8px">
+        <div><b style="font-size:16px">${esc(b.bag_no)}</b><div class="muted">${esc(co)} · ${b.source_type.replace('_',' ')}</div></div>
+        <div style="margin-left:auto;text-align:right">
+          <span class="pill ${b.status==='OPEN'?'p-open':'p-closed'}">${b.status}</span>
+          <span class="pill ${b.claim_status==='SETTLED'?'p-settled':'p-pending'}">${b.claim_status}</span>
+          <div class="muted" style="margin-top:4px">${b.total_qty} qty · ${money(b.total_value)}</div>
+        </div>
+      </div></div>`;}).join('')||'<div class="muted">Koi bag nahi.</div>';
+}
+async function openBagByNo(no){const {data}=await sb.from('mr_bags').select('*').eq('bag_no',no).maybeSingle();if(data)openBag(data.id);}
+async function openBag(id){
+  const {data:b}=await sb.from('mr_bags').select('*').eq('id',id).single();
+  const {data:items}=await sb.from('mr_items').select('*').eq('bag_id',id).eq('is_deleted',false);
+  const {data:photos}=await sb.from('mr_bag_photos').select('*').eq('bag_id',id).eq('is_deleted',false);
+  const co=(companies.find(c=>c.id===b.company_id)||{}).name||'';
+  const canReopen=can('reopen')&&b.status==='CLOSED';
+  const canSettle=can('settle');
+  $('sheet').innerHTML=`
+    <div style="display:flex;align-items:center;gap:8px"><b style="font-size:20px">${esc(b.bag_no)}</b>
+      <span class="pill ${b.status==='OPEN'?'p-open':'p-closed'}">${b.status}</span>
+      <button class="btn btn-sm" style="margin-left:auto" onclick="closeSheet()">✕</button></div>
+    <div class="muted" style="margin:6px 0">${esc(co)} · ${b.source_type.replace('_',' ')} · ${esc(b.retailer_name||'')}</div>
+    <div class="sum"><div class="s"><b>${(items||[]).length}</b><small>Items</small></div>
+      <div class="s"><b>${b.total_qty}</b><small>Qty</small></div><div class="s"><b>${money(b.total_value)}</b><small>Value</small></div></div>
+    <h3 style="margin-top:12px">Items</h3>
+    <div class="list">${(items||[]).map(i=>`<div class="it"><div class="nm"><b>${esc(i.item_name)}</b><small>${esc(i.brand_name||'')}</small></div><div class="q">${i.qty}×${money(i.mrp)}<br>${money(i.amount)}</div></div>`).join('')||'<div class="muted">—</div>'}</div>
+    <h3 style="margin-top:12px">Photos</h3>
+    <div class="thumbs">${(photos||[]).map(p=>`<img src="${esc(p.public_url)}">`).join('')||'<div class="muted">—</div>'}</div>
+    <div class="row" style="margin-top:14px">
+      <button class="btn" onclick='reprint(${JSON.stringify({id:b.id})})'>🏷️ PDF</button>
+      ${canSettle?`<button class="btn" onclick="claimChange('${b.id}','${b.claim_status}')">Claim: ${b.claim_status}</button>`:''}
+      ${canReopen?`<button class="btn btn-red" onclick="reopenBag('${b.id}','${esc(b.bag_no)}')">Reopen</button>`:''}
+    </div>
+    <p class="muted" style="margin-top:10px">Created: ${esc(b.created_by_name||'')} · ${new Date(b.created_at).toLocaleString('en-IN')}${b.closed_by_name?'<br>Closed: '+esc(b.closed_by_name):''}${b.reopened_by_name?'<br>Reopened: '+esc(b.reopened_by_name)+' ('+esc(b.reopen_reason||'')+')':''}</p>`;
+  $('ov').classList.add('show');
+}
+function closeSheet(){$('ov').classList.remove('show');}
+async function reprint(o){const {data:b}=await sb.from('mr_bags').select('*').eq('id',o.id).single();
+  const {data:items}=await sb.from('mr_items').select('*').eq('bag_id',o.id).eq('is_deleted',false); await makePDF(b,items||[]);}
+async function claimChange(id,cur){
+  if(!can('settle')){toast('Permission nahi');return;}
+  const next=prompt('Claim status (PENDING/SUBMITTED/PARTIAL/SETTLED/REJECTED):',cur); if(!next)return;
+  const up={claim_status:next.toUpperCase(),updated_at:new Date().toISOString(),updated_by_user_id:U.user_id,updated_by_name:U.user_name};
+  if(next.toUpperCase()==='SETTLED'){up.settled_at=new Date().toISOString();up.settled_by_user_id=U.user_id;up.settled_by_name=U.user_name;}
+  const {error}=await sb.from('mr_bags').update(up).eq('id',id); if(error){toast(error.message);return;}
+  logAct('CHANGE_CLAIM_STATUS','bag',id,'Claim -> '+next.toUpperCase(),{claim_status:{old:cur,new:next.toUpperCase()}});
+  closeSheet();loadBags();toast('Claim updated ✓');
+}
+async function reopenBag(id,no){
+  if(!can('reopen')){toast('Sirf Manager/Owner reopen kar sakte hain');return;}
+  const reason=prompt('Reopen ka reason (zaroori):'); if(!reason||!reason.trim()){toast('Reason zaroori');return;}
+  const b=(await sb.from('mr_bags').select('reopen_count').eq('id',id).single()).data;
+  const {error}=await sb.from('mr_bags').update({status:'OPEN',reopened_by_user_id:U.user_id,reopened_by_name:U.user_name,
+    reopened_at:new Date().toISOString(),reopen_reason:reason.trim(),reopen_count:((b&&b.reopen_count)||0)+1,updated_at:new Date().toISOString()}).eq('id',id);
+  if(error){toast(error.message);return;}
+  logAct('REOPEN_BAG','bag',id,'Reopened '+no+' — '+reason.trim());
+  closeSheet();loadBags();toast('Bag reopened');
+}
+
+/* ════════════ REPORTS ════════════ */
+async function report(kind){
+  $('repOut').classList.remove('hide'); $('repBody').innerHTML='Loading…';
+  const titles={company:'Company-wise Claim',brand:'Brand-wise Damage',item:'Item-wise Damage',bag:'Bag-wise',
+    pending:'Claim Pending',settled:'Claim Settled',opening:'Opening Damage',warehouse:'Warehouse Damage',staff:'Staff Productivity'};
+  $('repTitle').textContent=titles[kind];
+  try{
+    if(kind==='company'){const {data}=await sb.from('v_mr_company_claim').select('*');
+      tbl(['Company','Bags','Claimed','Settled','Variance'],(data||[]).map(r=>[r.company,r.bags,money(r.claimed_value),money(r.settled_value),money(r.variance)]));}
+    else if(kind==='brand'){const {data}=await sb.from('v_mr_brand_damage').select('*');
+      tbl(['Company','Brand','Qty','Value'],(data||[]).map(r=>[r.company,r.brand||'—',r.qty,money(r.value)]));}
+    else if(kind==='item'){const {data}=await sb.from('v_mr_item_damage').select('*').order('value',{ascending:false}).limit(200);
+      tbl(['Company','Item','Qty','Value'],(data||[]).map(r=>[r.company,r.item_name,r.qty,money(r.value)]));}
+    else if(kind==='staff'){const {data}=await sb.from('v_mr_staff_productivity').select('*').order('day',{ascending:false}).limit(300);
+      tbl(['Staff','Action','Day','Count'],(data||[]).map(r=>[r.user_name||r.user_id,r.action_type,r.day,r.actions]));}
+    else if(kind==='bag'){const {data}=await sb.from('mr_bags').select('*').eq('is_deleted',false).order('created_at',{ascending:false}).limit(200);
+      tbl(['Bag','Status','Claim','Qty','Value'],(data||[]).map(r=>[r.bag_no,r.status,r.claim_status,r.total_qty,money(r.total_value)]));}
+    else { // pending/settled/opening/warehouse -> filter bags
+      let q=sb.from('mr_bags').select('*').eq('is_deleted',false);
+      if(kind==='pending')q=q.eq('claim_status','PENDING'); if(kind==='settled')q=q.eq('claim_status','SETTLED');
+      if(kind==='opening')q=q.eq('source_type','OPENING_DAMAGE'); if(kind==='warehouse')q=q.eq('source_type','WAREHOUSE_DAMAGE');
+      const {data}=await q.order('created_at',{ascending:false}).limit(200);
+      tbl(['Bag','Company','Qty','Value','Claim'],(data||[]).map(r=>[r.bag_no,(companies.find(c=>c.id===r.company_id)||{}).name||'',r.total_qty,money(r.total_value),r.claim_status]));
+    }
+  }catch(e){$('repBody').innerHTML='<div class="muted">Error: '+esc(e.message||e)+' — SQL views bani hain? </div>';}
+}
+function tbl(head,rows){
+  $('repBody').innerHTML=`<table><thead><tr>${head.map(h=>`<th>${esc(h)}</th>`).join('')}</tr></thead>
+    <tbody>${rows.map(r=>`<tr>${r.map((c,i)=>`<td${i>1?' class="r"':''}>${esc(c)}</td>`).join('')}</tr>`).join('')||`<tr><td colspan="${head.length}" class="muted">Koi data nahi</td></tr>`}</tbody></table>`;
+}
+
+/* ════════════ USERS (owner / bootstrap) ════════════ */
+async function loadUsers(){
+  if(window._bootstrap)$('bootNotice').classList.remove('hide');
+  const {data}=await sb.from('mr_users').select('*').order('role');
+  $('userList').innerHTML=(data||[]).map(u=>`<div class="it"><div class="nm"><b>${esc(u.name||u.mobile)}</b><small>${esc(u.mobile)} · ${u.is_active?'active':'inactive'}</small></div>
+    <span class="badge ${u.role==='OWNER'?'b-owner':u.role==='MANAGER'?'b-manager':'b-staff'}">${u.role}</span></div>`).join('')||'<div class="muted">Koi user nahi</div>';
+}
+async function saveUser(){
+  if(role!=='OWNER'&&!window._bootstrap){toast('Sirf Owner');return;}
+  const mobile=$('uMobile').value.replace(/^\+?91/,'').trim(); if(mobile.length<10){toast('Mobile galat');return;}
+  const row={mobile,name:$('uN').value.trim()||null,role:$('uRole').value,is_active:true,is_approved:true,created_by_user_id:U.user_id,created_by_name:U.user_name};
+  const {data,error}=await sb.from('mr_users').upsert(row,{onConflict:'mobile'}).select().single();
+  if(error){toast(error.message);return;}
+  logAct('ADD_USER','user',data.id,'User '+mobile+' = '+row.role);
+  window._bootstrap=false;$('bootNotice').classList.add('hide');
+  $('uMobile').value='';$('uN').value='';
+  // refresh own role if self
+  if(mobile===U.mobile){role=row.role;const b=$('ubadge');b.textContent=role;b.className='badge '+(role==='OWNER'?'b-owner':role==='MANAGER'?'b-manager':'b-staff');
+    document.querySelectorAll('.tab-owner').forEach(t=>t.classList.toggle('hide',role!=='OWNER'));}
+  loadUsers();toast('User saved ✓');
+}
+
+/* ════════════ NAV ════════════ */
+function switchTab(t){
+  document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x.dataset.t===t));
+  ['entry','bags','reports','users'].forEach(p=>$('p-'+p).classList.toggle('hide',p!==t));
+  if(t==='bags')loadBags(); if(t==='users')loadUsers();
+}
+document.querySelectorAll('.tab').forEach(tab=>tab.addEventListener('click',()=>switchTab(tab.dataset.t)));
+
+/* go */
+boot();
+</script>
+</body>
+</html>
