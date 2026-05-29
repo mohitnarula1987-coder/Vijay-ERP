@@ -277,6 +277,25 @@ async function startBag(state){
   const st=$('abStatus');st.textContent=state;st.className='pill '+(state==='TEST'?'p-test':'p-open');
   clearRow();renderItems();renderThumbs();$('ieItem').focus();toast('Bag '+bagNo+' shuru ✓');
 }
+async function resumeBag(id){
+  const {data:b}=await sb.from('mr_bags').select('*').eq('id',id).single();
+  if(!b||(b.status!=='OPEN'&&b.status!=='TEST')){toast('Sirf OPEN/TEST bag resume hota hai');return;}
+  curBag=b;curSrc=b.source_type;pickedMaster=null;
+  const {data:its}=await sb.from('mr_items').select('*').eq('bag_id',id).eq('is_deleted',false).order('created_at',{ascending:false});
+  const {data:phs}=await sb.from('mr_bag_photos').select('*').eq('bag_id',id).eq('is_deleted',false);
+  curItems=its||[];curPhotos=phs||[];
+  closeSheet();switchTab('entry');
+  $('bagSetup').classList.add('hide');$('bagActive').classList.remove('hide');
+  const co=companies.find(c=>c.id===b.company_id);$('abNo').textContent=b.bag_no;$('abMeta').textContent=(co?co.name:'')+' · '+b.source_type.replace('_',' ');
+  const st=$('abStatus');st.textContent=b.status;st.className='pill '+(b.status==='TEST'?'p-test':'p-open');
+  $('whReasonWrap')&&$('whReasonWrap').classList.toggle('hide',curSrc!=='WAREHOUSE_DAMAGE');
+  clearRow();restoreDraft();renderItems();renderThumbs();$('ieItem').focus();toast('Bag '+b.bag_no+' resume ✓');
+}
+/* typed-row draft (crash safety) — items khud DB mein incremental save hote hain */
+function draftKey(){return 'mr-draft-'+(curBag?curBag.id:'none');}
+function saveDraft(){try{if(!curBag)return;const d={item:$('ieItem').value,qty:$('ieQty').value,mrp:$('ieMrp').value,brand:$('ieBrandView').value,master:pickedMaster};if(d.item||d.mrp)localStorage.setItem(draftKey(),JSON.stringify(d));else localStorage.removeItem(draftKey());}catch(_){}}
+function restoreDraft(){try{const raw=localStorage.getItem(draftKey());if(!raw)return;const d=JSON.parse(raw);if(d.item){$('ieItem').value=d.item;$('ieQty').value=d.qty||'1';$('ieMrp').value=d.mrp||'';$('ieBrandView').value=d.brand||'';pickedMaster=d.master||null;validateEntry();toast('Adhura row draft restore hua');}}catch(_){}}
+function clearDraft(){try{if(curBag)localStorage.removeItem(draftKey());}catch(_){}}
 let suggT=null;
 function erpSuggest(q){pickedMaster=null;$('ieBrandView').value='';clearTimeout(suggT);validateEntry();
   if(!q||q.length<2){$('sugg').innerHTML='';return;}
@@ -313,9 +332,9 @@ function bumpQty(d){let v=parseQty($('ieQty').value)+d;if(v<0)v=0;$('ieQty').val
 function validateEntry(){const name=$('ieItem').value.trim();const qty=parseQty($('ieQty').value);const mrp=parseFloat($('ieMrp').value||0);const amt=qty*mrp;
   $('ieAmt').textContent='Amount '+money(amt);let err='';
   if(!name)err='Item likho';else if(!(qty>0))err='Qty > 0 chahiye';else if(!(mrp>0))err='MRP Required';else if(!(amt>0))err='Amount > 0 chahiye';
-  $('ieErr').textContent=err;$('saveBtn').disabled=!!err;return !err;}
+  $('ieErr').textContent=err;$('saveBtn').disabled=!!err;saveDraft();return !err;}
 function toggleRepl(){$('replWrap').classList.toggle('hide',!$('ieRepl').checked);}
-function clearRow(){$('ieItem').value='';$('ieBrandView').value='';$('ieQty').value='1';$('ieMrp').value='';$('ieAmt').textContent='Amount ₹0.00';$('ieErr').textContent='';$('sugg').innerHTML='';$('vstat').textContent='';pickedMaster=null;if($('ieRepl').checked){$('ieRepl').checked=false;toggleRepl();$('ieReplItem').value='';$('ieReplQty').value='';}$('saveBtn').disabled=true;$('ieItem').focus();}
+function clearRow(){$('ieItem').value='';$('ieBrandView').value='';$('ieQty').value='1';$('ieMrp').value='';$('ieAmt').textContent='Amount ₹0.00';$('ieErr').textContent='';$('sugg').innerHTML='';$('vstat').textContent='';pickedMaster=null;if($('ieRepl').checked){$('ieRepl').checked=false;toggleRepl();$('ieReplItem').value='';$('ieReplQty').value='';}clearDraft();$('saveBtn').disabled=true;$('ieItem').focus();}
 async function saveItem(moveNext){
   if(!curBag){toast('Bag nahi khula');return;}
   if(!validateEntry())return;
@@ -419,7 +438,7 @@ async function openBag(id){
   const {data:items}=await sb.from('mr_items').select('*').eq('bag_id',id).eq('is_deleted',false);
   const {data:photos}=await sb.from('mr_bag_photos').select('*').eq('bag_id',id).eq('is_deleted',false);
   const co=(companies.find(c=>c.id===b.company_id)||{}).name||'';const isA=b.status==='APPROVED';
-  const cR=can('reopen')&&b.status==='CLOSED',cA=(role==='OWNER')&&b.status==='CLOSED',cD=can('delete')&&!isA&&b.status!=='DELETED',cS=can('settle')&&!isA;
+  const cR=can('reopen')&&b.status==='CLOSED',cA=(role==='OWNER')&&b.status==='CLOSED',cD=can('delete')&&!isA&&b.status!=='DELETED',cS=can('settle')&&!isA,cC=(b.status==='OPEN'||b.status==='TEST');
   $('sheet').innerHTML=`<div style="display:flex;align-items:center;gap:8px"><b style="font-size:20px">${esc(b.bag_no)}</b><span class="pill ${pillCls(b.status)}">${b.status}</span><button class="btn btn-sm" style="margin-left:auto" onclick="closeSheet()">✕</button></div>
     <div class="muted" style="margin:6px 0">${esc(co)} · ${b.source_type.replace('_',' ')} · ${esc(b.retailer_name||'')}</div>
     <div class="sum"><div class="s"><b>${(items||[]).length}</b><small>Items</small></div><div class="s"><b>${b.total_qty}</b><small>Qty</small></div><div class="s"><b>${money(b.total_value)}</b><small>Value</small></div></div>
@@ -427,6 +446,7 @@ async function openBag(id){
     <h3 style="margin-top:12px">Photos</h3><div class="thumbs">${(photos||[]).map(p=>`<img src="${esc(p.public_url)}">`).join('')||'<div class="muted">—</div>'}</div>
     <div class="row" style="margin-top:14px;flex-wrap:wrap">
       <button class="btn btn-sm" onclick='reprint("${b.id}")'>🏷️ PDF</button>
+      ${cC?`<button class="btn btn-sm btn-grn" onclick="resumeBag('${b.id}')">▶ Continue adding</button>`:''}
       ${cS?`<button class="btn btn-sm" onclick="claimChange('${b.id}','${b.claim_status}')">Claim: ${b.claim_status}</button>`:''}
       ${cR?`<button class="btn btn-sm btn-red" onclick="reopenBag('${b.id}','${esc(b.bag_no)}')">Reopen</button>`:''}
       ${cA?`<button class="btn btn-sm btn-grn" onclick="approveBag('${b.id}','${esc(b.bag_no)}')">✅ Approve (lock)</button>`:''}
