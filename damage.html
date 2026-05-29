@@ -6,238 +6,150 @@
 <title>Damage & Claim — Vijay Trading</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
-:root{
-  --bg:#0a0e1a; --bg2:#0f1525; --card:#131b30; --card2:#18233d;
-  --line:#22304f; --txt:#e6edff; --mut:#8aa0c8; --cyan:#00e5ff; --cyan2:#00b8cc;
-  --grn:#22c55e; --red:#ef4444; --gold:#f5a623; --vio:#a78bfa;
-  --r:14px; --sh:0 8px 30px rgba(0,0,0,.45);
-}
+:root{--bg:#0a0e1a;--bg2:#0f1525;--card:#131b30;--card2:#18233d;--line:#22304f;--txt:#e6edff;--mut:#8aa0c8;
+--cyan:#00e5ff;--cyan2:#00b8cc;--grn:#22c55e;--red:#ef4444;--gold:#f5a623;--vio:#a78bfa;--r:14px;--sh:0 8px 30px rgba(0,0,0,.45);}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{margin:0;background:radial-gradient(1200px 600px at 70% -10%,#13203c 0%,var(--bg) 55%);
-  color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;min-height:100vh}
-a{color:var(--cyan)}
-.hide{display:none!important}
-/* header */
-header{position:sticky;top:0;z-index:40;background:rgba(10,14,26,.92);backdrop-filter:blur(10px);
-  border-bottom:1px solid var(--line);padding:10px 14px;display:flex;align-items:center;gap:10px}
-.logo{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#0a0e1a,#16213c);
-  border:1px solid var(--cyan);display:grid;place-items:center;color:var(--cyan);font-weight:800;font-size:13px}
-.h-t{font-weight:800;letter-spacing:.3px;font-size:15px;line-height:1}
-.h-s{font-size:10px;color:var(--mut);letter-spacing:1.5px;text-transform:uppercase}
+body{margin:0;background:radial-gradient(1200px 600px at 70% -10%,#13203c 0%,var(--bg) 55%);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;min-height:100vh}
+a{color:var(--cyan)} .hide{display:none!important}
+header{position:sticky;top:0;z-index:40;background:rgba(10,14,26,.92);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);padding:10px 14px;display:flex;align-items:center;gap:10px}
+.logo{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#0a0e1a,#16213c);border:1px solid var(--cyan);display:grid;place-items:center;color:var(--cyan);font-weight:800;font-size:13px}
+.h-t{font-weight:800;font-size:15px;line-height:1}.h-s{font-size:10px;color:var(--mut);letter-spacing:1.5px;text-transform:uppercase}
 .h-right{margin-left:auto;display:flex;align-items:center;gap:8px}
-.badge{font-size:10px;font-weight:800;letter-spacing:.5px;padding:4px 8px;border-radius:20px;border:1px solid var(--line)}
-.b-owner{color:var(--gold);border-color:#5a4a1f;background:#241d0c}
-.b-manager{color:var(--vio);border-color:#3b3270;background:#1a1640}
-.b-staff{color:var(--cyan);border-color:#1f4a55;background:#0c2128}
-.u-name{font-size:12px;color:var(--mut);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-/* nav */
+.badge{font-size:10px;font-weight:800;padding:4px 8px;border-radius:20px;border:1px solid var(--line)}
+.b-owner{color:var(--gold);border-color:#5a4a1f;background:#241d0c}.b-manager{color:var(--vio);border-color:#3b3270;background:#1a1640}.b-staff{color:var(--cyan);border-color:#1f4a55;background:#0c2128}
+.u-name{font-size:12px;color:var(--mut);max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 nav{display:flex;gap:4px;padding:8px 10px;overflow-x:auto;border-bottom:1px solid var(--line);background:var(--bg2)}
-.tab{flex:0 0 auto;padding:9px 14px;border-radius:10px;font-size:13px;font-weight:700;color:var(--mut);
-  background:transparent;border:1px solid transparent;cursor:pointer;white-space:nowrap}
+.tab{flex:0 0 auto;padding:9px 13px;border-radius:10px;font-size:13px;font-weight:700;color:var(--mut);background:transparent;border:1px solid transparent;cursor:pointer;white-space:nowrap}
 .tab.on{color:var(--cyan);background:var(--card);border-color:var(--line)}
-/* layout */
-main{padding:14px;max-width:880px;margin:0 auto;padding-bottom:60px}
+main{padding:14px;max-width:900px;margin:0 auto;padding-bottom:60px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:12px;box-shadow:var(--sh)}
 .card h3{margin:0 0 10px;font-size:13px;letter-spacing:.5px;text-transform:uppercase;color:var(--mut)}
 label{display:block;font-size:11px;color:var(--mut);margin:8px 0 4px;letter-spacing:.4px;text-transform:uppercase}
-input,select,textarea{width:100%;padding:12px;background:var(--bg2);border:1px solid var(--line);border-radius:10px;
-  color:var(--txt);font-size:15px;outline:none}
-input:focus,select:focus,textarea:focus{border-color:var(--cyan)}
+input,select,textarea{width:100%;padding:12px;background:var(--bg2);border:1px solid var(--line);border-radius:10px;color:var(--txt);font-size:15px;outline:none}
+input:focus,select:focus{border-color:var(--cyan)} input[readonly]{opacity:.6}
 .row{display:flex;gap:8px}.row>*{flex:1}
-.btn{padding:12px 14px;border-radius:11px;border:1px solid var(--line);background:var(--card2);color:var(--txt);
-  font-weight:700;font-size:14px;cursor:pointer}
-.btn:active{transform:scale(.98)}
+.btn{padding:12px 14px;border-radius:11px;border:1px solid var(--line);background:var(--card2);color:var(--txt);font-weight:700;font-size:14px;cursor:pointer}
+.btn:active{transform:scale(.98)} .btn:disabled{opacity:.4;cursor:not-allowed}
 .btn-cyan{background:linear-gradient(135deg,var(--cyan),var(--cyan2));color:#04222a;border:none}
-.btn-grn{background:var(--grn);color:#05210f;border:none}
-.btn-red{background:transparent;color:var(--red);border-color:#5a1f1f}
-.btn-ghost{background:transparent}
-.btn-sm{padding:7px 10px;font-size:12px;border-radius:9px}
-.btn-block{width:100%}
+.btn-grn{background:var(--grn);color:#05210f;border:none}.btn-red{background:transparent;color:var(--red);border-color:#5a1f1f}
+.btn-sm{padding:7px 10px;font-size:12px;border-radius:9px}.btn-block{width:100%}
+.icobtn{flex:0 0 48px;display:grid;place-items:center;font-size:18px;padding:0}
+.icobtn.rec{background:#3a1010;border-color:#5a1f1f;color:#ff6b6b;animation:pulse 1s infinite}@keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}
 .src-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .src{padding:12px 6px;border-radius:11px;border:1px solid var(--line);background:var(--bg2);text-align:center;cursor:pointer;font-size:12px;font-weight:700}
-.src.on{border-color:var(--cyan);background:#0c2128;color:var(--cyan)}
-.src small{display:block;color:var(--mut);font-weight:500;font-size:10px;margin-top:2px}
-.qtybar{display:flex;gap:8px;align-items:stretch}
-.qtybar .qbtn{flex:0 0 54px;font-size:22px;font-weight:800;display:grid;place-items:center}
-.qtybar input{flex:1;text-align:center;font-size:22px;font-weight:800}
-.amt{font-size:13px;color:var(--grn);font-weight:800;margin-top:6px}
+.src.on{border-color:var(--cyan);background:#0c2128;color:var(--cyan)}.src small{display:block;color:var(--mut);font-weight:500;font-size:10px;margin-top:2px}
+.qtybar{display:flex;gap:8px}.qtybar .qbtn{flex:0 0 54px;font-size:22px;font-weight:800;display:grid;place-items:center}.qtybar input{flex:1;text-align:center;font-size:22px;font-weight:800}
+.amt{font-size:13px;color:var(--grn);font-weight:800;margin-top:6px}.err{color:var(--red);font-size:12px;font-weight:700;margin-top:6px;min-height:14px}
 .pill{display:inline-block;font-size:10px;font-weight:800;padding:3px 8px;border-radius:20px;border:1px solid var(--line);color:var(--mut)}
-.p-open{color:var(--cyan);border-color:#1f4a55}.p-closed{color:var(--mut)}
+.p-open{color:var(--cyan);border-color:#1f4a55}.p-closed{color:var(--mut)}.p-test{color:var(--gold);border-color:#5a4a1f}.p-approved{color:var(--grn);border-color:#1f5a33}.p-deleted{color:var(--red);border-color:#5a1f1f}
 .p-pending{color:var(--gold);border-color:#5a4a1f}.p-settled{color:var(--grn);border-color:#1f5a33}
 .list .it{display:flex;align-items:center;gap:8px;padding:10px;border:1px solid var(--line);border-radius:10px;margin-bottom:6px;background:var(--bg2)}
-.it .nm{flex:1;min-width:0}.it .nm b{font-size:14px}.it .nm small{display:block;color:var(--mut);font-size:11px}
-.it .q{font-weight:800;color:var(--cyan);font-size:13px;white-space:nowrap}
-.sum{display:flex;gap:10px;margin-top:6px}
-.sum .s{flex:1;background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:10px;text-align:center}
+.it .nm{flex:1;min-width:0}.it .nm b{font-size:14px}.it .nm small{display:block;color:var(--mut);font-size:11px}.it .q{font-weight:800;color:var(--cyan);font-size:13px;white-space:nowrap;text-align:right}
+.sum{display:flex;gap:10px;margin-top:6px}.sum .s{flex:1;background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:10px;text-align:center}
 .sum .s b{display:block;font-size:18px;color:var(--cyan)}.sum .s small{color:var(--mut);font-size:10px;text-transform:uppercase}
-.thumbs{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
-.thumbs img{width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid var(--line)}
+.thumbs{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.thumbs img{width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid var(--line)}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.chip{font-size:12px;padding:6px 10px;border-radius:18px;border:1px solid var(--line);background:var(--bg2);cursor:pointer;white-space:nowrap}
+.vstat{font-size:12px;color:var(--cyan);margin-top:6px;min-height:14px}
 .notice{font-size:12px;color:var(--gold);background:#241d0c;border:1px solid #5a4a1f;border-radius:9px;padding:8px 10px;margin-bottom:10px}
 .muted{color:var(--mut);font-size:12px}
-table{width:100%;border-collapse:collapse;font-size:13px}
-th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line)}
-th{color:var(--mut);font-size:11px;text-transform:uppercase}
-td.r,th.r{text-align:right}
-/* modal */
-.ov{position:fixed;inset:0;background:rgba(4,8,18,.8);z-index:60;display:none;align-items:flex-end;justify-content:center}
-.ov.show{display:flex}
-.sheet{background:var(--card);border:1px solid var(--line);border-radius:18px 18px 0 0;width:100%;max-width:880px;max-height:90vh;overflow:auto;padding:16px}
-.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#0c1426;border:1px solid var(--line);
-  color:var(--txt);padding:12px 18px;border-radius:30px;font-size:13px;z-index:90;display:none;box-shadow:var(--sh);max-width:90%}
-.gate{min-height:80vh;display:grid;place-items:center;text-align:center;padding:30px}
-.gate .logo{width:60px;height:60px;font-size:20px;margin:0 auto 16px}
-.icobtn{flex:0 0 48px;display:grid;place-items:center;font-size:18px;padding:0}
-.icobtn.rec{background:#3a1010;border-color:#5a1f1f;color:#ff6b6b;animation:pulse 1s infinite}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}
-.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
-.chip{font-size:12px;padding:6px 10px;border-radius:18px;border:1px solid var(--line);background:var(--bg2);cursor:pointer;white-space:nowrap}
-.chip:active{transform:scale(.96)}
-.vstat{font-size:12px;color:var(--cyan);margin-top:6px;min-height:14px}
-@media(max-width:520px){.src-grid{grid-template-columns:repeat(3,1fr)}}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line)}th{color:var(--mut);font-size:11px;text-transform:uppercase}td.r,th.r{text-align:right}
+.ov{position:fixed;inset:0;background:rgba(4,8,18,.8);z-index:60;display:none;align-items:flex-end;justify-content:center}.ov.show{display:flex}
+.sheet{background:var(--card);border:1px solid var(--line);border-radius:18px 18px 0 0;width:100%;max-width:900px;max-height:90vh;overflow:auto;padding:16px}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#0c1426;border:1px solid var(--line);color:var(--txt);padding:12px 18px;border-radius:30px;font-size:13px;z-index:90;display:none;box-shadow:var(--sh);max-width:90%}
+.gate{min-height:80vh;display:grid;place-items:center;text-align:center;padding:30px}.gate .logo{width:60px;height:60px;font-size:20px;margin:0 auto 16px}
 </style>
 </head>
 <body>
+<div id="gate" class="gate hide"><div>
+  <div class="logo">VT</div><h2 style="margin:0 0 8px">Damage & Claim</h2>
+  <p class="muted" style="max-width:320px">Pehle Vijay ERP mein login karein. Yeh module wahi login use karta hai.</p>
+  <a class="btn btn-cyan btn-block" style="display:inline-block;margin-top:14px;text-decoration:none" href="index.html">→ ERP Login kholo</a>
+</div></div>
+<div id="blocked" class="gate hide"><div>
+  <div class="logo" style="border-color:var(--gold);color:var(--gold)">🔒</div>
+  <h2 style="margin:0 0 8px">Device approval pending</h2>
+  <p class="muted" style="max-width:340px">Yeh device approved nahi hai. Owner ko bolo <b>Users → Devices</b> mein <b>Approve</b> kare. Forwarded link doosre device pe access nahi dega.</p>
+  <p id="blkInfo" class="muted" style="margin-top:12px"></p>
+</div></div>
 
-<!-- ====== GATE (no ERP session) ====== -->
-<div id="gate" class="gate hide">
-  <div>
-    <div class="logo">VT</div>
-    <h2 style="margin:0 0 8px">Damage & Claim</h2>
-    <p class="muted" style="max-width:320px">Pehle Vijay ERP mein login karein. Yeh module wahi login use karta hai (alag password nahi).</p>
-    <a class="btn btn-cyan btn-block" style="display:inline-block;margin-top:14px;text-decoration:none" href="index.html">→ ERP Login kholo</a>
-    <p class="muted" style="margin-top:14px">Login ke baad, wapas is page pe aayein.</p>
-  </div>
-</div>
-
-<!-- ====== BLOCKED (device not approved) ====== -->
-<div id="blocked" class="gate hide">
-  <div>
-    <div class="logo" style="border-color:var(--gold);color:var(--gold)">🔒</div>
-    <h2 style="margin:0 0 8px">Device approval pending</h2>
-    <p class="muted" style="max-width:340px">Yeh device abhi approved nahi hai. Owner ko bolo ki <b>Users → Devices</b> mein ise <b>Approve</b> kare. Forwarded link doosre device pe access nahi dega.</p>
-    <p id="blkInfo" class="muted" style="margin-top:12px"></p>
-  </div>
-</div>
-
-<!-- ====== APP ====== -->
 <div id="app" class="hide">
 <header>
   <div class="logo">VT</div>
   <div><div class="h-t">Damage & Claim</div><div class="h-s">Phase A · Isolated</div></div>
-  <div class="h-right">
-    <span id="uname" class="u-name"></span>
-    <span id="ubadge" class="badge b-staff">STAFF</span>
-  </div>
+  <div class="h-right"><span id="uname" class="u-name"></span><span id="ubadge" class="badge b-staff">STAFF</span><button class="btn btn-sm" onclick="doLogout()">Logout</button></div>
 </header>
-
 <nav id="nav">
-  <div class="tab on" data-t="entry">＋ New Entry</div>
+  <div class="tab on" data-t="entry">＋ Entry</div>
   <div class="tab" data-t="bags">📦 Bags</div>
   <div class="tab" data-t="reports">📊 Reports</div>
+  <div class="tab tab-owner hide" data-t="items">🏷️ Items</div>
   <div class="tab tab-owner hide" data-t="users">👥 Users</div>
 </nav>
-
 <main>
-  <!-- ===== NEW ENTRY ===== -->
   <section id="p-entry">
-    <!-- bag setup -->
     <div id="bagSetup" class="card">
       <h3>New Bag</h3>
       <label>Company *</label>
-      <div class="row">
-        <select id="seCompany"></select>
-        <button class="btn btn-sm" style="flex:0 0 auto" onclick="addCompany()">+ Add</button>
-      </div>
+      <div class="row"><select id="seCompany"></select><button class="btn btn-sm" style="flex:0 0 auto" onclick="addCompany()">+ Add</button></div>
       <label>Source Type *</label>
       <div class="src-grid">
         <div class="src on" data-src="MARKET_RETURN">Market Return<small>retailer se</small></div>
         <div class="src" data-src="OPENING_DAMAGE">Opening Damage<small>purana stock</small></div>
         <div class="src" data-src="WAREHOUSE_DAMAGE">Warehouse<small>andar ka</small></div>
       </div>
-      <div id="whWrap" class="hide">
-        <label>Warehouse</label><select id="seWh"></select>
+      <div id="whWrap" class="hide"><label>Warehouse</label><select id="seWh"></select></div>
+      <label>Retailer (optional)</label><input id="seRetailer" placeholder="Naam (optional)">
+      <div class="row" style="margin-top:12px">
+        <button class="btn btn-cyan" onclick="startBag('OPEN')">Start Bag →</button>
+        <button class="btn" style="flex:0 0 auto" onclick="startBag('TEST')">🧪 Test</button>
       </div>
-      <label>Retailer (optional)</label>
-      <input id="seRetailer" placeholder="Naam (optional)">
-      <button class="btn btn-cyan btn-block" style="margin-top:12px" onclick="startBag()">Start Bag →</button>
     </div>
-
-    <!-- active bag -->
     <div id="bagActive" class="hide">
       <div class="card" style="display:flex;align-items:center;gap:10px">
-        <div>
-          <div style="font-weight:800;font-size:18px" id="abNo">BAG-—</div>
-          <div class="muted" id="abMeta">—</div>
-        </div>
-        <span class="pill p-open" style="margin-left:auto">OPEN</span>
+        <div><div style="font-weight:800;font-size:18px" id="abNo">BAG-—</div><div class="muted" id="abMeta">—</div></div>
+        <span class="pill p-open" id="abStatus" style="margin-left:auto">OPEN</span>
       </div>
-
-      <!-- fast entry -->
       <div class="card">
         <h3>Add Item (fast)</h3>
-        <label>Brand</label>
+        <label>Item <span class="muted" style="text-transform:none">— type to search / 🎤 / 📷 (brand+MRP auto)</span></label>
         <div class="row">
-          <select id="ieBrand"></select>
-          <button class="btn btn-sm" style="flex:0 0 auto" onclick="addBrand()">+ Add</button>
-        </div>
-        <label>Item <span class="muted" style="text-transform:none">— type / ERP search / 🎤 voice / 📷 barcode</span></label>
-        <div class="row">
-          <input id="ieItem" placeholder="Item naam (free text)" autocomplete="off" oninput="erpSuggest(this.value)">
-          <button class="btn icobtn" id="voiceBtn" title="Voice" onclick="startVoice()">🎤</button>
-          <button class="btn icobtn" title="Barcode scan" onclick="scanBarcode()">📷</button>
+          <input id="ieItem" placeholder="Item naam" autocomplete="off" oninput="erpSuggest(this.value)">
+          <button class="btn icobtn" id="voiceBtn" onclick="startVoice()">🎤</button>
+          <button class="btn icobtn" onclick="scanBarcode()">📷</button>
         </div>
         <div id="vstat" class="vstat"></div>
         <div id="sugg" class="list" style="margin-top:6px"></div>
         <div id="recent" class="chips"></div>
-        <div id="whReasonWrap" class="hide">
-          <label>Reason (warehouse damage)</label>
-          <select id="ieReason">
-            <option value="">—</option><option>Breakage</option><option>Leakage</option>
-            <option>Expiry</option><option>Rodent</option><option>Handling</option><option>Other</option>
-          </select>
+        <div class="row">
+          <div><label>Brand (auto)</label><input id="ieBrandView" readonly placeholder="item se auto"></div>
+          <div id="whReasonWrap" class="hide"><label>Reason</label>
+            <select id="ieReason"><option value="">—</option><option>Breakage</option><option>Leakage</option><option>Expiry</option><option>Rodent</option><option>Handling</option><option>Other</option></select></div>
         </div>
         <div class="row">
-          <div style="flex:1.3">
-            <label>Qty</label>
-            <div class="qtybar">
-              <button class="btn qbtn" onclick="bumpQty(-1)">−</button>
-              <input id="ieQty" type="number" inputmode="numeric" value="1" min="0" step="1">
-              <button class="btn qbtn" onclick="bumpQty(1)">＋</button>
-            </div>
-          </div>
-          <div>
-            <label>MRP ₹</label>
-            <input id="ieMrp" type="number" inputmode="decimal" value="" placeholder="0" oninput="calcAmt()">
-            <div class="amt" id="ieAmt">Amount ₹0.00</div>
-          </div>
+          <div style="flex:1.3"><label>Qty <span class="muted" style="text-transform:none">(1+9=10)</span></label>
+            <div class="qtybar"><button class="btn qbtn" onclick="bumpQty(-1)">−</button>
+            <input id="ieQty" inputmode="text" value="1" oninput="validateEntry()"><button class="btn qbtn" onclick="bumpQty(1)">＋</button></div></div>
+          <div><label>MRP ₹ *</label><input id="ieMrp" type="number" inputmode="decimal" value="" placeholder="0" oninput="validateEntry()">
+            <div class="amt" id="ieAmt">Amount ₹0.00</div></div>
         </div>
         <label style="display:flex;align-items:center;gap:8px;text-transform:none;font-size:13px;color:var(--txt)">
-          <input type="checkbox" id="ieRepl" style="width:auto" onchange="toggleRepl()"> Replacement diya? (record only — stock deduct nahi)
-        </label>
+          <input type="checkbox" id="ieRepl" style="width:auto" onchange="toggleRepl()"> Replacement diya? (record only)</label>
         <div id="replWrap" class="hide">
-          <div class="row">
-            <div><label>Replacement Item</label><input id="ieReplItem" placeholder="item"></div>
-            <div style="flex:.6"><label>Qty</label><input id="ieReplQty" type="number" value=""></div>
-          </div>
-          <label>Warehouse (se nikalega — future)</label><select id="ieReplWh"></select>
+          <div class="row"><div><label>Repl. Item</label><input id="ieReplItem"></div><div style="flex:.6"><label>Qty</label><input id="ieReplQty" type="number"></div></div>
+          <label>Warehouse</label><select id="ieReplWh"></select>
         </div>
-        <button class="btn btn-grn btn-block" style="margin-top:12px" onclick="saveItem()">Save &amp; Next ⏎</button>
+        <div class="err" id="ieErr"></div>
+        <button class="btn btn-grn btn-block" id="saveBtn" style="margin-top:6px" onclick="saveItem(true)" disabled>Save &amp; Next ⏎</button>
       </div>
-
-      <!-- this bag items -->
       <div class="card">
         <h3>Is bag ke items</h3>
-        <div class="sum">
-          <div class="s"><b id="sCount">0</b><small>Items</small></div>
-          <div class="s"><b id="sQty">0</b><small>Total Qty</small></div>
-          <div class="s"><b id="sVal">₹0</b><small>Total Value</small></div>
-        </div>
+        <div class="sum"><div class="s"><b id="sCount">0</b><small>Items</small></div><div class="s"><b id="sQty">0</b><small>Qty</small></div><div class="s"><b id="sVal">₹0</b><small>Value</small></div></div>
         <div id="bagItems" class="list" style="margin-top:10px"></div>
       </div>
-
-      <!-- photos + close -->
       <div class="card">
         <h3>Photos (close ke liye zaroori)</h3>
         <input type="file" id="phInput" accept="image/*" capture="environment" multiple onchange="uploadPhotos(this.files)">
@@ -246,578 +158,387 @@ td.r,th.r{text-align:right}
       </div>
     </div>
   </section>
-
-  <!-- ===== BAGS ===== -->
   <section id="p-bags" class="hide">
-    <div class="card">
-      <h3>Bags</h3>
-      <div class="row">
-        <input id="fBagNo" placeholder="Search BAG number…" onkeydown="if(event.key==='Enter')loadBags()">
-        <button class="btn btn-sm" style="flex:0 0 auto" onclick="loadBags()">🔍</button>
-      </div>
+    <div class="card"><h3>Bags</h3>
+      <div class="row"><input id="fBagNo" placeholder="Search BAG number…" onkeydown="if(event.key==='Enter')loadBags()"><button class="btn btn-sm" style="flex:0 0 auto" onclick="loadBags()">🔍</button></div>
       <div class="row" style="margin-top:8px">
-        <select id="fSource"><option value="">All sources</option><option value="MARKET_RETURN">Market Return</option>
-          <option value="OPENING_DAMAGE">Opening Damage</option><option value="WAREHOUSE_DAMAGE">Warehouse</option></select>
-        <select id="fStatus"><option value="">All status</option><option value="OPEN">Open</option><option value="CLOSED">Closed</option></select>
+        <select id="fSource"><option value="">All sources</option><option value="MARKET_RETURN">Market Return</option><option value="OPENING_DAMAGE">Opening Damage</option><option value="WAREHOUSE_DAMAGE">Warehouse</option></select>
+        <select id="fStatus"><option value="">All status</option><option>OPEN</option><option>CLOSED</option><option>APPROVED</option><option>TEST</option></select>
       </div>
       <button class="btn btn-sm btn-block" style="margin-top:8px" onclick="loadBags()">Refresh</button>
     </div>
     <div id="bagList"></div>
   </section>
-
-  <!-- ===== REPORTS ===== -->
   <section id="p-reports" class="hide">
-    <div class="card">
-      <h3>Reports</h3>
+    <div class="card"><h3>Reports</h3>
       <div class="src-grid" style="grid-template-columns:repeat(2,1fr)">
-        <div class="src" onclick="report('company')">Company-wise</div>
-        <div class="src" onclick="report('brand')">Brand-wise</div>
-        <div class="src" onclick="report('item')">Item-wise</div>
-        <div class="src" onclick="report('bag')">Bag-wise</div>
-        <div class="src" onclick="report('pending')">Claim Pending</div>
-        <div class="src" onclick="report('settled')">Claim Settled</div>
-        <div class="src" onclick="report('opening')">Opening Damage</div>
-        <div class="src" onclick="report('warehouse')">Warehouse Damage</div>
-        <div class="src" onclick="report('market')">Market Return</div>
-        <div class="src" onclick="report('staff')">Staff Productivity</div>
+        <div class="src" onclick="report('company')">Company-wise</div><div class="src" onclick="report('brand')">Brand-wise</div>
+        <div class="src" onclick="report('item')">Item-wise</div><div class="src" onclick="report('bag')">Bag-wise</div>
+        <div class="src" onclick="report('pending')">Claim Pending</div><div class="src" onclick="report('settled')">Claim Settled</div>
+        <div class="src" onclick="report('opening')">Opening Damage</div><div class="src" onclick="report('warehouse')">Warehouse Damage</div>
+        <div class="src" onclick="report('market')">Market Return</div><div class="src" onclick="report('staff')">Staff Productivity</div>
       </div>
     </div>
-    <div id="repOut" class="card hide"><h3 id="repTitle"></h3><div id="repBody"></div></div>
+    <div id="repOut" class="card hide"><div style="display:flex;align-items:center;gap:8px"><h3 id="repTitle" style="margin:0"></h3>
+      <div style="margin-left:auto;display:flex;gap:6px"><button class="btn btn-sm" onclick="exportXlsx()">⬇ Excel</button><button class="btn btn-sm" onclick="exportPdf()">⬇ PDF</button></div></div>
+      <div id="repBody" style="margin-top:10px"></div></div>
   </section>
-
-  <!-- ===== USERS (owner) ===== -->
+  <section id="p-items" class="hide">
+    <div class="card"><h3>Item Master</h3><input id="imSearch" placeholder="Search item…" oninput="loadMasterList(this.value)">
+      <p class="muted" style="margin-top:6px">Edit MRP · Disable · Approve (pending) · Merge duplicates</p></div>
+    <div id="masterList"></div>
+  </section>
   <section id="p-users" class="hide">
-    <div id="bootNotice" class="notice hide">Setup mode: koi user nahi mila. Aap (owner) yahan users + roles add karein.</div>
-    <div class="card">
-      <h3>Add / Update User</h3>
-      <div class="row"><div><label>Mobile</label><input id="uMobile" placeholder="10-digit"></div>
-        <div><label>Name</label><input id="uN" placeholder="naam"></div></div>
-      <label>Role</label>
-      <select id="uRole"><option>STAFF</option><option>MANAGER</option><option>OWNER</option></select>
+    <div id="bootNotice" class="notice hide">Setup mode: koi user nahi. Aap (owner) users add karein.</div>
+    <div class="card"><h3>Add / Update User</h3>
+      <div class="row"><div><label>Mobile</label><input id="uMobile" placeholder="10-digit"></div><div><label>Name</label><input id="uN" placeholder="naam"></div></div>
+      <label>Role</label><select id="uRole"><option>STAFF</option><option>MANAGER</option><option>OWNER</option></select>
       <button class="btn btn-cyan btn-block" style="margin-top:10px" onclick="saveUser()">Save User</button>
     </div>
-    <div class="card"><h3>Users</h3><div id="userList"></div></div>
-    <div class="card"><h3>Devices — approve / pending</h3>
-      <p class="muted" style="margin-top:-4px">Naya device (ya forwarded URL) tab tak block rahega jab tak Owner approve na kare.</p>
-      <div id="deviceList"></div></div>
+    <div class="card"><h3>Users (aaj ka kaam)</h3><div id="userList"></div></div>
+    <div class="card"><h3>Devices — approve / pending</h3><p class="muted" style="margin-top:-4px">Ek user = ek approved device.</p><div id="deviceList"></div></div>
   </section>
 </main>
 </div>
-
-<!-- modal + toast -->
 <div id="ov" class="ov"><div class="sheet" id="sheet"></div></div>
 <div id="toast" class="toast"></div>
-
 <script>
-/* ════════════ CONFIG ════════════ */
 const SUPA_URL='https://vbprpviyhyqllmaodejz.supabase.co';
 const SUPA_KEY='sb_publishable_7E5EVnRSIeQ4w2oxtmzutQ_YVGsLydc';
 const BUCKET='mr-bag-photos';
 const sb=supabase.createClient(SUPA_URL,SUPA_KEY);
-
-/* ════════════ STATE ════════════ */
-let U=null;            // {user_id,user_name,mobile}
-let role='STAFF';
-let deviceId='', deviceName='';
-let companies=[], brands=[], warehouses=[];
-let curBag=null;       // active bag row
-let curItems=[];       // items in active bag
-let curPhotos=[];      // photos in active bag
-let pickedVariant=null;// {id,name} when ERP item chosen
-
-/* ════════════ HELPERS ════════════ */
+let U=null,role='STAFF',deviceId='',deviceName='';
+let companies=[],brands=[],warehouses=[];
+let curBag=null,curItems=[],curPhotos=[],curSrc='MARKET_RETURN';
+let pickedMaster=null,recentList=[],lastReport={title:'',head:[],rows:[]};
 const $=id=>document.getElementById(id);
-function toast(m){const t=$('toast');t.textContent=m;t.style.display='block';clearTimeout(t._t);t._t=setTimeout(()=>t.style.display='none',3200);}
+function toast(m){const t=$('toast');t.textContent=m;t.style.display='block';clearTimeout(t._t);t._t=setTimeout(()=>t.style.display='none',3400);}
 function money(n){return '₹'+(Number(n||0)).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});}
 function esc(s){return (s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
-function audit(extra){return Object.assign({created_by_user_id:U.user_id,created_by_name:U.user_name,created_device:deviceName},extra||{});}
-async function logAct(action,refType,refId,desc,changes){
-  try{await sb.from('mr_activity_log').insert({user_id:U.user_id,user_name:U.user_name,device_id:deviceId,device_info:deviceName,
-    action_type:action,reference_type:refType,reference_id:refId,description:desc,changes:changes||null});}catch(e){console.warn('log',e);}
-}
-function can(perm){ // permissions
-  if(role==='OWNER')return true;
-  if(role==='MANAGER')return perm!=='manage_users';
-  return ['add','edit_own'].includes(perm); // STAFF: cannot reopen/delete/settle/manage_users
-}
-
-/* ════════════ BOOT ════════════ */
+function norm(s){return (s||'').toUpperCase().replace(/\s+/g,' ').trim();}
+function nowISO(){return new Date().toISOString();}
+function audit(x){return Object.assign({created_by_user_id:U.user_id,created_by_name:U.user_name,created_device:deviceName},x||{});}
+async function logAct(a,rt,ri,d,ch){try{await sb.from('mr_activity_log').insert({user_id:U.user_id,user_name:U.user_name,user_role:role,user_mobile:U.mobile,device_id:deviceId,device_info:deviceName,action_type:a,reference_type:rt,reference_id:ri,description:d,changes:ch||null});}catch(e){console.warn('log',e);}}
+function can(p){if(role==='OWNER')return true;if(role==='MANAGER')return !['manage_users','approve_bag'].includes(p);return false;}
 async function boot(){
-  // identity from ERP session (read-only reuse)
-  let sess=null; try{sess=JSON.parse(localStorage.getItem('vtc-session')||'null');}catch(e){}
-  if(!sess||!sess.phone){ $('gate').classList.remove('hide'); return; }
-  U={user_id:(sess.id||sess.phone),user_name:(sess.name||'Staff'),mobile:String(sess.phone).replace(/^\+?91/,'').trim()};
-  // device
+  let s=null;try{s=JSON.parse(localStorage.getItem('vtc-session')||'null');}catch(e){}
+  if(!s||!s.phone){$('gate').classList.remove('hide');return;}
+  U={user_id:(s.id||s.phone),user_name:(s.name||'Staff'),mobile:String(s.phone).replace(/^\+?91/,'').trim()};
   deviceId=localStorage.getItem('mr-device-id')||(crypto.randomUUID?crypto.randomUUID():('dev-'+Date.now()+Math.random()));
   localStorage.setItem('mr-device-id',deviceId);
   deviceName=navigator.platform+' · '+(navigator.userAgent.match(/(iphone|ipad|android|windows|mac|linux)/i)||['web'])[0];
   await resolveRole();
   const dev=await registerDevice();
-  if(!(window._bootstrap || role==='OWNER' || dev.approved)){
-    $('blocked').classList.remove('hide');
-    $('blkInfo').textContent='Device: '+deviceName+' · '+U.user_name+' ('+U.mobile+')';
-    return;
-  }
-  $('app').classList.remove('hide');
-  $('uname').textContent=U.user_name;
-  const b=$('ubadge'); b.textContent=role; b.className='badge '+(role==='OWNER'?'b-owner':role==='MANAGER'?'b-manager':'b-staff');
-  if(role==='OWNER'){document.querySelectorAll('.tab-owner').forEach(t=>t.classList.remove('hide'));}
-  await loadMasters();
-  onSrcChange();
-  // QR deep-link: ?bag=BAG-000001
-  const bag=new URLSearchParams(location.search).get('bag');
-  if(bag){ switchTab('bags'); openBagByNo(bag); }
+  if(!(window._bootstrap||role==='OWNER'||dev.approved)){$('blocked').classList.remove('hide');$('blkInfo').textContent='Device: '+deviceName+' · '+U.user_name+' ('+U.mobile+')';return;}
+  $('app').classList.remove('hide');$('uname').textContent=U.user_name;
+  const b=$('ubadge');b.textContent=role;b.className='badge '+(role==='OWNER'?'b-owner':role==='MANAGER'?'b-manager':'b-staff');
+  if(role==='OWNER')document.querySelectorAll('.tab-owner').forEach(t=>t.classList.remove('hide'));
+  logAct('LOGIN','user',U.user_id,'Login');
+  await loadMasters();onSrcChange();
+  const bag=new URLSearchParams(location.search).get('bag');if(bag){switchTab('bags');openBagByNo(bag);}
 }
-async function resolveRole(){
-  try{
-    const {data,error}=await sb.from('mr_users').select('*');
-    if(error)throw error;
-    if(!data||data.length===0){ role='OWNER'; window._bootstrap=true; return; } // first-ever: setup mode
-    const me=data.find(u=>String(u.mobile).replace(/^\+?91/,'').trim()===U.mobile);
-    role = me && me.is_active ? me.role : 'STAFF';
-    if(me){ sb.from('mr_users').update({last_login_at:new Date().toISOString(),last_activity_at:new Date().toISOString()}).eq('id',me.id).then(()=>{}); }
-  }catch(e){ role='STAFF'; console.warn('role',e); }
-}
-async function registerDevice(){
-  try{
-    const {data}=await sb.from('mr_devices').select('*').eq('user_mobile',U.mobile).eq('device_id',deviceId).maybeSingle();
-    const now=new Date().toISOString();
-    if(!data){ const cnt=await sb.from('mr_devices').select('id',{count:'exact',head:true}).eq('user_mobile',U.mobile);
-      const first=((cnt.count||0)===0);
-      const ins=await sb.from('mr_devices').insert({user_mobile:U.mobile,device_id:deviceId,device_name:deviceName,is_approved:first,first_seen_at:now,last_login_at:now,last_activity_at:now}).select().single();
-      return {approved: first || !!(ins.data&&ins.data.is_approved)};
-    }else{ await sb.from('mr_devices').update({last_login_at:now,last_activity_at:now}).eq('id',data.id); return {approved:!!data.is_approved}; }
-  }catch(e){console.warn('device',e); return {approved:true};} // error -> don't lock out
-}
-
-/* ════════════ MASTERS ════════════ */
+async function resolveRole(){try{const {data}=await sb.from('mr_users').select('*');
+  if(!data||data.length===0){role='OWNER';window._bootstrap=true;return;}
+  const me=data.find(u=>String(u.mobile).replace(/^\+?91/,'').trim()===U.mobile);
+  role=me&&me.is_active?me.role:'STAFF';
+  if(me)sb.from('mr_users').update({last_login_at:nowISO(),last_activity_at:nowISO()}).eq('id',me.id).then(()=>{});
+}catch(e){role='STAFF';}}
+async function registerDevice(){try{
+  const {data}=await sb.from('mr_devices').select('*').eq('user_mobile',U.mobile).eq('device_id',deviceId).maybeSingle();
+  if(!data){const cnt=await sb.from('mr_devices').select('id',{count:'exact',head:true}).eq('user_mobile',U.mobile);
+    const first=((cnt.count||0)===0);
+    const ins=await sb.from('mr_devices').insert({user_mobile:U.mobile,device_id:deviceId,device_name:deviceName,is_approved:first,first_seen_at:nowISO(),last_login_at:nowISO(),last_activity_at:nowISO()}).select().single();
+    return {approved:first||!!(ins.data&&ins.data.is_approved)};}
+  await sb.from('mr_devices').update({last_login_at:nowISO(),last_activity_at:nowISO()}).eq('id',data.id);return {approved:!!data.is_approved};
+}catch(e){return {approved:true};}}
+function doLogout(){logAct('LOGOUT','user',U.user_id,'Logout');toast('Logout…');setTimeout(()=>location.href='index.html',600);}
 async function loadMasters(){
   const [c,b,w]=await Promise.all([
     sb.from('mr_companies').select('*').eq('is_deleted',false).order('name'),
     sb.from('mr_brands').select('*').eq('is_deleted',false).order('name'),
-    sb.from('warehouses').select('*').order('id').then(r=>r,()=>({data:[]}))
-  ]);
-  companies=c.data||[]; brands=b.data||[]; warehouses=(w&&w.data)||[];
-  fillSel('seCompany',companies,'name');
-  const wopts=warehouses.map(x=>`<option value="${esc(x.id)}">${esc(x.name||('WH '+x.id))}</option>`).join('');
-  $('seWh').innerHTML='<option value="">—</option>'+wopts;
-  $('ieReplWh').innerHTML='<option value="">—</option>'+wopts;
-  refreshBrandSel();
+    sb.from('warehouses').select('*').order('id').then(r=>r,()=>({data:[]}))]);
+  companies=c.data||[];brands=b.data||[];warehouses=(w&&w.data)||[];
+  $('seCompany').innerHTML=companies.map(x=>`<option value="${esc(x.id)}">${esc(x.name)}</option>`).join('');
+  const wo='<option value="">—</option>'+warehouses.map(x=>`<option value="${esc(x.id)}">${esc(x.name||('WH '+x.id))}</option>`).join('');
+  $('seWh').innerHTML=wo;$('ieReplWh').innerHTML=wo;
 }
-function fillSel(id,arr,key){ $(id).innerHTML=arr.map(x=>`<option value="${esc(x.id)}">${esc(x[key])}</option>`).join(''); }
-function refreshBrandSel(){
-  const cid=$('seCompany').value;
-  const bs=brands.filter(b=>b.company_id===cid);
-  $('ieBrand').innerHTML='<option value="">—</option>'+bs.map(b=>`<option value="${esc(b.id)}">${esc(b.name)}</option>`).join('');
-}
-$('seCompany')&&$('seCompany').addEventListener('change',refreshBrandSel);
-
-async function addCompany(){
-  const name=prompt('Company naam (e.g. Tata Consumer):'); if(!name)return;
+async function addCompany(){const name=prompt('Company naam:');if(!name)return;
   const {data,error}=await sb.from('mr_companies').insert(audit({name:name.trim()})).select().single();
-  if(error){toast('Error: '+error.message);return;}
-  companies.push(data); fillSel('seCompany',companies,'name'); $('seCompany').value=data.id; refreshBrandSel();
-  logAct('ADD_COMPANY','company',data.id,'Added company '+name);
-  toast('Company added ✓');
-}
-async function addBrand(){
-  const cid=$('seCompany').value; if(!cid){toast('Pehle company chuno');return;}
-  const name=prompt('Brand naam (e.g. Tata Salt):'); if(!name)return;
-  const {data,error}=await sb.from('mr_brands').insert(audit({company_id:cid,name:name.trim()})).select().single();
-  if(error){toast('Error: '+error.message);return;}
-  brands.push(data); refreshBrandSel(); $('ieBrand').value=data.id;
-  logAct('ADD_BRAND','brand',data.id,'Added brand '+name);
-  toast('Brand added ✓');
-}
-
-/* ════════════ SOURCE / SETUP ════════════ */
-let curSrc='MARKET_RETURN';
-document.querySelectorAll('.src[data-src]').forEach(el=>el.addEventListener('click',()=>{
-  document.querySelectorAll('.src[data-src]').forEach(s=>s.classList.remove('on'));
-  el.classList.add('on'); curSrc=el.dataset.src; onSrcChange();
-}));
-function onSrcChange(){
-  $('whWrap').classList.toggle('hide',curSrc!=='WAREHOUSE_DAMAGE');
-  $('whReasonWrap')&&$('whReasonWrap').classList.toggle('hide',curSrc!=='WAREHOUSE_DAMAGE');
-  const r=$('seRetailer');
-  if(curSrc==='OPENING_DAMAGE'){r.value='Opening Stock';}
-  else if(curSrc==='WAREHOUSE_DAMAGE'){r.value='NA';}
-  else if(r.value==='Opening Stock'||r.value==='NA'){r.value='';}
-}
-
-/* ════════════ BAG LIFECYCLE ════════════ */
-async function startBag(){
-  const cid=$('seCompany').value; if(!cid){toast('Company chuno');return;}
-  let bagNo; try{const {data,error}=await sb.rpc('mr_next_bag_no'); if(error)throw error; bagNo=data;}
-  catch(e){toast('Bag no error: '+e.message);return;}
-  const ins=audit({bag_no:bagNo,company_id:cid,source_type:curSrc,
-    retailer_name:$('seRetailer').value.trim()||null, warehouse_id:(curSrc==='WAREHOUSE_DAMAGE'?($('seWh').value||null):null),
-    status:'OPEN'});
+  if(error){toast(error.message);return;}await loadMasters();$('seCompany').value=data.id;logAct('ADD_COMPANY','company',data.id,'Added '+name);toast('Company added ✓');}
+document.querySelectorAll('.src[data-src]').forEach(el=>el.addEventListener('click',()=>{document.querySelectorAll('.src[data-src]').forEach(s=>s.classList.remove('on'));el.classList.add('on');curSrc=el.dataset.src;onSrcChange();}));
+function onSrcChange(){$('whWrap').classList.toggle('hide',curSrc!=='WAREHOUSE_DAMAGE');$('whReasonWrap')&&$('whReasonWrap').classList.toggle('hide',curSrc!=='WAREHOUSE_DAMAGE');
+  const r=$('seRetailer');if(curSrc==='OPENING_DAMAGE')r.value='Opening Stock';else if(curSrc==='WAREHOUSE_DAMAGE')r.value='NA';else if(r.value==='Opening Stock'||r.value==='NA')r.value='';}
+async function startBag(state){
+  const cid=$('seCompany').value;if(!cid){toast('Company chuno');return;}
+  let bagNo;try{const {data,error}=await sb.rpc('mr_next_bag_no');if(error)throw error;bagNo=data;}catch(e){toast('Bag no error: '+e.message);return;}
+  const ins=audit({bag_no:bagNo,company_id:cid,source_type:curSrc,retailer_name:$('seRetailer').value.trim()||null,warehouse_id:(curSrc==='WAREHOUSE_DAMAGE'?($('seWh').value||null):null),status:state});
   const {data,error}=await sb.from('mr_bags').insert(ins).select().single();
-  if(error){toast('Error: '+error.message);return;}
-  curBag=data; curItems=[]; curPhotos=[];
-  logAct('OPEN_BAG','bag',data.id,'Opened '+bagNo);
-  $('bagSetup').classList.add('hide'); $('bagActive').classList.remove('hide');
-  const co=companies.find(c=>c.id===cid);
-  $('abNo').textContent=bagNo; $('abMeta').textContent=(co?co.name:'')+' · '+curSrc.replace('_',' ');
-  refreshBrandSel(); renderItems(); renderThumbs(); $('ieItem').focus();
-  toast('Bag '+bagNo+' shuru ✓');
+  if(error){toast(error.message);return;}
+  curBag=data;curItems=[];curPhotos=[];pickedMaster=null;
+  logAct(state==='TEST'?'CREATE_TEST_BAG':'OPEN_BAG','bag',data.id,(state==='TEST'?'Test bag ':'Opened ')+bagNo);
+  $('bagSetup').classList.add('hide');$('bagActive').classList.remove('hide');
+  const co=companies.find(c=>c.id===cid);$('abNo').textContent=bagNo;$('abMeta').textContent=(co?co.name:'')+' · '+curSrc.replace('_',' ');
+  const st=$('abStatus');st.textContent=state;st.className='pill '+(state==='TEST'?'p-test':'p-open');
+  clearRow();renderItems();renderThumbs();$('ieItem').focus();toast('Bag '+bagNo+' shuru ✓');
 }
-
-function bumpQty(d){const q=$('ieQty');let v=parseInt(q.value||'0',10)+d;if(v<0)v=0;q.value=v;calcAmt();}
-function calcAmt(){const q=parseFloat($('ieQty').value||0),m=parseFloat($('ieMrp').value||0);$('ieAmt').textContent='Amount '+money(q*m);}
-function toggleRepl(){$('replWrap').classList.toggle('hide',!$('ieRepl').checked);}
-
-/* ERP item search (best-effort; free-text always works) */
 let suggT=null;
-function erpSuggest(q){ pickedVariant=null; clearTimeout(suggT); if(!q||q.length<2){$('sugg').innerHTML='';return;}
-  suggT=setTimeout(async()=>{
-    try{const {data}=await sb.from('variants').select('*').limit(8).ilike('name','%'+q+'%');
-      const rows=(data||[]); if(!rows.length){$('sugg').innerHTML='';return;}
-      $('sugg').innerHTML=rows.map(r=>{const nm=vName(r);return `<div class="it" style="cursor:pointer" onclick='pickVariant(${JSON.stringify({id:r.id,name:nm,mrp:r.mrp||r.price||""}).replace(/'/g,"&#39;")})'><div class="nm"><b>${esc(nm)}</b><small>ERP item</small></div></div>`;}).join('');
-    }catch(e){$('sugg').innerHTML='';}
-  },250);
-}
-function vName(r){return r.name||r.item_name||r.variant_name||r.title||r.sku||r.code||('Item '+r.id);}
-function pickVariant(v){pickedVariant=v;$('ieItem').value=v.name;$('sugg').innerHTML='';if(v.mrp){$('ieMrp').value=v.mrp;calcAmt();}}
-
-async function saveItem(moveNext){
-  if(moveNext===undefined)moveNext=true;
+function erpSuggest(q){pickedMaster=null;$('ieBrandView').value='';clearTimeout(suggT);validateEntry();
+  if(!q||q.length<2){$('sugg').innerHTML='';return;}
+  suggT=setTimeout(async()=>{try{const cid=curBag?curBag.company_id:null;
+    let qq=sb.from('mr_item_master').select('*').eq('is_deleted',false).eq('is_active',true).ilike('item_name','%'+q+'%').limit(8);
+    if(cid)qq=qq.eq('company_id',cid);
+    const {data}=await qq;const rows=data||[];
+    let html=rows.map(r=>`<div class="it" style="cursor:pointer" onclick='pickMaster(${esc(JSON.stringify(r))})'><div class="nm"><b>${esc(r.item_name)}</b><small>${esc(brandName(r.brand_id))}${r.mrp?(' · ₹'+r.mrp):''}${r.is_approved?'':' · ⏳'}</small></div></div>`).join('');
+    html+=`<div class="it" style="cursor:pointer;border-color:var(--cyan)" onclick="newItem()"><div class="nm"><b style="color:var(--cyan)">＋ Naya item add karo</b><small>"${esc(q)}" master mein nahi mila</small></div></div>`;
+    $('sugg').innerHTML=html;
+  }catch(e){$('sugg').innerHTML='';}},220);}
+function brandName(id){return (brands.find(b=>b.id===id)||{}).name||'';}
+function pickMaster(r){pickedMaster=r;$('ieItem').value=r.item_name;$('ieBrandView').value=brandName(r.brand_id);if(r.mrp)$('ieMrp').value=r.mrp;$('sugg').innerHTML='';validateEntry();$('ieQty').focus();}
+async function newItem(){
   if(!curBag){toast('Bag nahi khula');return;}
-  const name=$('ieItem').value.trim(); if(!name){toast('Item likho');return;}
-  const qty=parseFloat($('ieQty').value||0); if(!(qty>0)){toast('Qty > 0 chahiye');return;}
-  const mrp=parseFloat($('ieMrp').value||0); if(mrp<0){toast('MRP galat');return;}
-  const bid=$('ieBrand').value;
-  const row=audit({bag_id:curBag.id, brand_id:bid||null, brand_name:(brands.find(b=>b.id===bid)||{}).name||null,
-    erp_variant_id:pickedVariant?String(pickedVariant.id):null, item_name:name, is_free_text:!pickedVariant,
-    unit:'pcs', qty:qty, mrp:mrp,
-    reason:(curSrc==='WAREHOUSE_DAMAGE'?($('ieReason').value||null):null),
-    replacement_given:$('ieRepl').checked,
-    replacement_item_name:$('ieRepl').checked?($('ieReplItem').value.trim()||null):null,
-    replacement_warehouse_id:$('ieRepl').checked?($('ieReplWh').value||null):null,
-    replacement_qty:$('ieRepl').checked?parseFloat($('ieReplQty').value||0)||null:null,
-    entry_method:window._lastEntryMethod||'manual'});
+  const name=($('ieItem').value||'').trim();if(!name){toast('Item naam likho');return;}
+  const cid=curBag.company_id;const cbs=brands.filter(b=>b.company_id===cid);
+  const bopts=cbs.map((b,i)=>(i+1)+'. '+b.name).join('\n');
+  const bsel=prompt('Brand chuno (number) ya naya brand naam likho:\n'+bopts);if(bsel===null)return;
+  let brand_id=null;const n=parseInt(bsel,10);
+  if(n>=1&&n<=cbs.length)brand_id=cbs[n-1].id;
+  else{const bn=bsel.trim();if(bn){const {data:bd,error:be}=await sb.from('mr_brands').insert(audit({company_id:cid,name:bn})).select().single();if(be){toast(be.message);return;}brands.push(bd);brand_id=bd.id;}}
+  const mrp=parseFloat(prompt('MRP ₹ (>0):')||'0');if(!(mrp>0)){toast('MRP > 0 zaroori');return;}
+  const barcode=(prompt('Barcode (optional):')||'').trim()||null;
+  const row=audit({company_id:cid,brand_id:brand_id,item_name:name,normalized_name:norm(name),mrp:mrp,barcode:barcode,is_approved:(role==='OWNER')});
+  const {data,error}=await sb.from('mr_item_master').insert(row).select().single();
+  if(error){toast('Master error: '+error.message);return;}
+  logAct('ADD_ITEM_MASTER','item_master',data.id,'New master '+name);pickMaster(data);toast('Item saved ✓'+(data.is_approved?'':' (approval pending)'));
+}
+function parseQty(s){s=String(s).trim();if(/^[0-9]+(\.[0-9]+)?$/.test(s))return parseFloat(s);const m=s.match(/-?\d+(\.\d+)?/g);if(m)return m.reduce((a,b)=>a+parseFloat(b),0);return 0;}
+function bumpQty(d){let v=parseQty($('ieQty').value)+d;if(v<0)v=0;$('ieQty').value=v;validateEntry();}
+function validateEntry(){const name=$('ieItem').value.trim();const qty=parseQty($('ieQty').value);const mrp=parseFloat($('ieMrp').value||0);const amt=qty*mrp;
+  $('ieAmt').textContent='Amount '+money(amt);let err='';
+  if(!name)err='Item likho';else if(!(qty>0))err='Qty > 0 chahiye';else if(!(mrp>0))err='MRP Required';else if(!(amt>0))err='Amount > 0 chahiye';
+  $('ieErr').textContent=err;$('saveBtn').disabled=!!err;return !err;}
+function toggleRepl(){$('replWrap').classList.toggle('hide',!$('ieRepl').checked);}
+function clearRow(){$('ieItem').value='';$('ieBrandView').value='';$('ieQty').value='1';$('ieMrp').value='';$('ieAmt').textContent='Amount ₹0.00';$('ieErr').textContent='';$('sugg').innerHTML='';$('vstat').textContent='';pickedMaster=null;if($('ieRepl').checked){$('ieRepl').checked=false;toggleRepl();$('ieReplItem').value='';$('ieReplQty').value='';}$('saveBtn').disabled=true;$('ieItem').focus();}
+async function saveItem(moveNext){
+  if(!curBag){toast('Bag nahi khula');return;}
+  if(!validateEntry())return;
+  const name=$('ieItem').value.trim();const qty=parseQty($('ieQty').value);const mrp=parseFloat($('ieMrp').value||0);
+  const row=audit({bag_id:curBag.id,master_id:pickedMaster?pickedMaster.id:null,brand_id:pickedMaster?pickedMaster.brand_id:null,brand_name:pickedMaster?brandName(pickedMaster.brand_id):null,
+    item_name:name,is_free_text:!pickedMaster,unit:'pcs',qty:qty,mrp:mrp,reason:(curSrc==='WAREHOUSE_DAMAGE'?($('ieReason').value||null):null),
+    replacement_given:$('ieRepl').checked,replacement_item_name:$('ieRepl').checked?($('ieReplItem').value.trim()||null):null,
+    replacement_warehouse_id:$('ieRepl').checked?($('ieReplWh').value||null):null,replacement_qty:$('ieRepl').checked?parseFloat($('ieReplQty').value||0)||null:null,
+    entry_method:window._lastEntry||'manual'});
   const {data,error}=await sb.from('mr_items').insert(row).select().single();
   if(error){toast('Error: '+error.message);return;}
-  curItems.unshift(data); pushRecent({item_name:name,mrp:mrp,brand_id:bid,erp_variant_id:row.erp_variant_id});
-  logAct('ADD_ITEM','item',data.id,'Added '+name+' x'+qty+' to '+curBag.bag_no);
-  window._lastEntryMethod='manual';
-  $('ieItem').value='';$('ieQty').value='1';$('ieMrp').value='';$('ieAmt').textContent='Amount ₹0.00';
-  pickedVariant=null;$('sugg').innerHTML='';$('vstat').textContent='';
-  if($('ieRepl').checked){$('ieRepl').checked=false;toggleRepl();$('ieReplItem').value='';$('ieReplQty').value='';}
-  renderItems(); if(moveNext)$('ieItem').focus();
-  toast('Saved ✓'+(moveNext?' next…':''));
+  curItems.unshift(data);pushRecent({item_name:name,mrp:mrp,master:pickedMaster});
+  logAct('ADD_ITEM','item',data.id,'Added '+name+' x'+qty);window._lastEntry='manual';
+  clearRow();renderItems();if(moveNext)$('ieItem').focus();toast('Saved ✓'+(moveNext?' next…':''));
 }
-function clearRow(){
-  $('ieItem').value='';$('ieQty').value='1';$('ieMrp').value='';$('ieAmt').textContent='Amount ₹0.00';
-  pickedVariant=null;$('sugg').innerHTML='';$('vstat').textContent='';
-  if($('ieRepl').checked){$('ieRepl').checked=false;toggleRepl();}
-  $('ieItem').focus();
-}
-/* recent items panel (last 10 distinct) */
-let recentList=[];
-function pushRecent(o){ recentList=recentList.filter(r=>r.item_name.toLowerCase()!==o.item_name.toLowerCase()); recentList.unshift(o); recentList=recentList.slice(0,10); renderRecent(); }
-function renderRecent(){ const el=$('recent'); if(!el)return;
-  el.innerHTML=recentList.map((r,i)=>`<span class="chip" onclick="applyRecent(${i})">${esc(r.item_name)}${r.mrp?(' ₹'+r.mrp):''}</span>`).join(''); }
-function applyRecent(i){ const r=recentList[i]; if(!r)return; $('ieItem').value=r.item_name; if(r.mrp){$('ieMrp').value=r.mrp;calcAmt();}
-  if(r.brand_id&&[...$('ieBrand').options].some(o=>o.value===r.brand_id))$('ieBrand').value=r.brand_id;
-  pickedVariant=r.erp_variant_id?{id:r.erp_variant_id,name:r.item_name}:null; $('ieQty').focus(); }
-
-/* ════════════ KEYBOARD SHORTCUTS ════════════ */
-// Enter (on entry fields) = Save & Next ; Ctrl/Cmd+Enter = Save (stay) ; Esc = clear row
-['ieItem','ieQty','ieMrp','ieReplItem','ieReplQty'].forEach(id=>{const el=$(id);el&&el.addEventListener('keydown',e=>{
-  if(e.key==='Enter'){ e.preventDefault(); if(e.ctrlKey||e.metaKey)saveItem(false); else saveItem(true); }
-  else if(e.key==='Escape'){ e.preventDefault(); clearRow(); }
-});});
-
-/* ════════════ VOICE ENTRY ════════════ */
-// "Tata Premium 1kg qty 20" -> item + qty, auto-fill, cursor next
-let recog=null;
-function startVoice(){
-  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-  if(!SR){ toast('Is browser mein voice support nahi (Chrome try karo)'); return; }
-  const btn=$('voiceBtn');
-  if(recog){ try{recog.stop();}catch(_){} recog=null; btn.classList.remove('rec'); $('vstat').textContent=''; return; }
-  recog=new SR(); recog.lang='en-IN'; recog.interimResults=false; recog.maxAlternatives=1;
-  btn.classList.add('rec'); $('vstat').textContent='🎤 Sun raha hoon… bolo: "Tata Premium 1kg qty 20"';
-  recog.onresult=e=>{ const t=e.results[0][0].transcript; $('vstat').textContent='Suna: "'+t+'"'; parseVoice(t); window._lastEntryMethod='voice'; };
-  recog.onerror=e=>{ $('vstat').textContent='Voice error: '+e.error; };
-  recog.onend=()=>{ btn.classList.remove('rec'); recog=null; };
-  try{recog.start();}catch(_){}
-}
-function parseVoice(t){
-  // qty: after "qty"/"quantity"/"x" OR a trailing number
-  let qty=null, txt=t.trim();
-  let m=txt.match(/\b(?:qty|quantity|x|into|ginti)\s*([0-9]+)/i);
-  if(m){ qty=parseInt(m[1],10); txt=txt.replace(m[0],'').trim(); }
-  else { const m2=txt.match(/\s([0-9]+)\s*(?:packet|pcs|piece|pieces|nos)?$/i); if(m2){ qty=parseInt(m2[1],10); txt=txt.slice(0,m2.index).trim(); } }
-  if(txt) $('ieItem').value=txt;
-  if(qty&&qty>0) $('ieQty').value=qty;
-  pickedVariant=null; calcAmt();
-  // try ERP match in background
-  erpSuggest(txt);
-  $('ieMrp').focus(); // MRP daal ke Enter = save & next
-}
-
-/* ════════════ BARCODE SCAN (optional) ════════════ */
-async function scanBarcode(){
-  if(!('BarcodeDetector' in window)){ toast('Barcode scan is browser/phone pe support nahi — free-text use karo'); return; }
-  try{
-    const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
-    const v=document.createElement('video'); v.srcObject=stream; v.setAttribute('playsinline','true'); await v.play();
-    $('vstat').textContent='📷 Barcode camera ke saamne rakho…';
-    const det=new window.BarcodeDetector();
-    let tries=0;
-    const tick=async()=>{
-      tries++;
-      try{ const codes=await det.detect(v);
-        if(codes&&codes.length){ const code=codes[0].rawValue; stream.getTracks().forEach(t=>t.stop());
-          $('vstat').textContent='Barcode: '+code; await barcodeLookup(code); window._lastEntryMethod='scan'; return; }
-      }catch(_){}
-      if(tries<120) requestAnimationFrame(tick); else { stream.getTracks().forEach(t=>t.stop()); $('vstat').textContent='Barcode nahi mila — free-text use karo'; }
-    };
-    tick();
-  }catch(e){ toast('Camera nahi khula: '+(e.message||e)); }
-}
-async function barcodeLookup(code){
-  // optional: if ERP variants has a barcode, auto-load; else just put code as item ref
-  try{
-    const {data}=await sb.from('variants').select('*').or('barcode.eq.'+code+',ean.eq.'+code+',sku.eq.'+code).limit(1);
-    if(data&&data.length){ const v=data[0]; pickVariant({id:v.id,name:vName(v),mrp:v.mrp||v.price||''}); $('ieQty').focus(); return; }
-  }catch(_){}
-  $('ieItem').value=$('ieItem').value||('Barcode '+code); $('ieQty').focus();
-}
-
+['ieItem','ieQty','ieMrp'].forEach(id=>{const el=$(id);el&&el.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();if(e.ctrlKey||e.metaKey)saveItem(false);else saveItem(true);}else if(e.key==='Escape'){e.preventDefault();clearRow();}});});
+function pushRecent(o){recentList=recentList.filter(r=>r.item_name.toLowerCase()!==o.item_name.toLowerCase());recentList.unshift(o);recentList=recentList.slice(0,10);renderRecent();}
+function renderRecent(){$('recent').innerHTML=recentList.map((r,i)=>`<span class="chip" onclick="applyRecent(${i})">${esc(r.item_name)}${r.mrp?(' ₹'+r.mrp):''}</span>`).join('');}
+function applyRecent(i){const r=recentList[i];if(!r)return;if(r.master)pickMaster(r.master);else{$('ieItem').value=r.item_name;if(r.mrp)$('ieMrp').value=r.mrp;}validateEntry();$('ieQty').focus();}
 function renderItems(){
-  $('sCount').textContent=curItems.length;
-  const q=curItems.reduce((a,i)=>a+Number(i.qty||0),0);
-  const v=curItems.reduce((a,i)=>a+Number(i.amount||0),0);
-  $('sQty').textContent=q; $('sVal').textContent=money(v);
-  $('bagItems').innerHTML=curItems.map(i=>`<div class="it">
-    <div class="nm"><b>${esc(i.item_name)}</b><small>${esc(i.brand_name||'')}${i.replacement_given?' · 🔁 repl':''}${i.reason?' · '+esc(i.reason):''}</small></div>
+  $('sCount').textContent=curItems.length;$('sQty').textContent=curItems.reduce((a,i)=>a+Number(i.qty||0),0);$('sVal').textContent=money(curItems.reduce((a,i)=>a+Number(i.amount||0),0));
+  $('bagItems').innerHTML=curItems.map(i=>`<div class="it"><div class="nm"><b>${esc(i.item_name)}</b><small>${esc(i.brand_name||'')}${i.replacement_given?' · 🔁':''}${i.reason?' · '+esc(i.reason):''}</small></div>
     <div class="q">${i.qty} × ${money(i.mrp)}<br>${money(i.amount)}</div>
-    <button class="btn btn-sm btn-red" onclick="delItem('${i.id}')">✕</button>
-  </div>`).join('')||'<div class="muted">Abhi koi item nahi.</div>';
+    <button class="btn btn-sm" onclick="editItem('${i.id}')">✎</button><button class="btn btn-sm btn-red" onclick="delItem('${i.id}')">✕</button></div>`).join('')||'<div class="muted">Abhi koi item nahi.</div>';
 }
-async function delItem(id){
-  if(!can('edit_own')&&role==='STAFF'){} // allow staff to remove just-added? business: staff cannot delete records
-  if(role==='STAFF'){toast('Staff item delete nahi kar sakta');return;}
-  if(!confirm('Item hatayein?'))return;
-  const {error}=await sb.from('mr_items').update({is_deleted:true,deleted_by_user_id:U.user_id,deleted_by_name:U.user_name,deleted_at:new Date().toISOString()}).eq('id',id);
+async function editItem(id){const it=curItems.find(x=>x.id===id);if(!it)return;
+  const nq=parseQty(prompt('Nayi Qty:',it.qty));if(!(nq>0)){toast('Qty galat');return;}
+  const nm=parseFloat(prompt('Naya MRP:',it.mrp));if(!(nm>0)){toast('MRP galat');return;}
+  const {data,error}=await sb.from('mr_items').update({qty:nq,mrp:nm,updated_by_user_id:U.user_id,updated_by_name:U.user_name,updated_at:nowISO()}).eq('id',id).select().single();
   if(error){toast(error.message);return;}
-  curItems=curItems.filter(i=>i.id!==id);
-  logAct('DELETE_ITEM','item',id,'Soft-deleted item');
-  renderItems(); toast('Removed');
-}
-
-/* ════════════ PHOTOS ════════════ */
-async function uploadPhotos(files){
-  if(!curBag){toast('Bag nahi khula');return;}
-  for(const f of files){
-    try{
-      const path=curBag.bag_no+'/'+Date.now()+'_'+f.name.replace(/[^\w.\-]/g,'_');
-      const up=await sb.storage.from(BUCKET).upload(path,f,{upsert:false});
-      if(up.error)throw up.error;
-      const pub=sb.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
-      const {data,error}=await sb.from('mr_bag_photos').insert({bag_id:curBag.id,storage_path:path,public_url:pub,
-        file_name:f.name,mime_type:f.type,size_bytes:f.size,uploaded_by_user_id:U.user_id,uploaded_by_name:U.user_name,uploaded_device:deviceName}).select().single();
-      if(error)throw error;
-      curPhotos.push(data); logAct('UPLOAD_PHOTO','photo',data.id,'Photo on '+curBag.bag_no);
-    }catch(e){toast('Photo error: '+(e.message||e));}
-  }
-  renderThumbs(); $('phInput').value='';
-}
-function renderThumbs(){ $('thumbs').innerHTML=curPhotos.map(p=>`<img src="${esc(p.public_url)}" alt="">`).join(''); }
-
-/* ════════════ CLOSE BAG + PDF ════════════ */
-async function closeBag(){
-  if(!curBag){return;}
-  if(curItems.length===0){toast('Bag khaali hai');return;}
-  if(curPhotos.length===0){toast('Kam se kam 1 photo zaroori');return;}
-  if(!confirm('Bag close karein? Photos lock ho jayengi.'))return;
-  const now=new Date().toISOString();
-  const {error}=await sb.from('mr_bags').update({status:'CLOSED',closed_by_user_id:U.user_id,closed_by_name:U.user_name,closed_at:now,updated_at:now}).eq('id',curBag.id);
-  if(error){toast(error.message);return;}
-  logAct('CLOSE_BAG','bag',curBag.id,'Closed '+curBag.bag_no+' ('+curItems.length+' items)');
-  await makePDF(curBag,curItems);
-  toast('Bag closed ✓');
-  // reset
-  curBag=null;curItems=[];curPhotos=[];
-  $('bagActive').classList.add('hide');$('bagSetup').classList.remove('hide');
-}
-async function makePDF(bag,items){
-  try{
-    const {jsPDF}=window.jspdf; const doc=new jsPDF({unit:'mm',format:'a5'});
-    const co=(companies.find(c=>c.id===bag.company_id)||{}).name||'';
-    const tQty=items.reduce((a,i)=>a+Number(i.qty||0),0), tVal=items.reduce((a,i)=>a+Number(i.amount||0),0);
-    doc.setFontSize(18);doc.text('DAMAGE BAG LABEL',10,14);
-    doc.setFontSize(22);doc.setTextColor(0,150,170);doc.text(bag.bag_no,10,24);doc.setTextColor(0,0,0);
-    doc.setFontSize(11);
-    doc.text('Company: '+co,10,34);
-    doc.text('Source: '+bag.source_type.replace('_',' '),10,40);
-    doc.text('Date: '+new Date().toLocaleString('en-IN'),10,46);
-    doc.text('Total Qty: '+tQty,10,52);
-    doc.text('Total Value: Rs '+tVal.toFixed(2),10,58);
-    // QR -> bag detail deep link
-    const qrUrl=location.origin+location.pathname+'?bag='+encodeURIComponent(bag.bag_no);
-    const qr=await QRCode.toDataURL(qrUrl,{width:240,margin:1});
-    doc.addImage(qr,'PNG',95,30,40,40);
-    doc.setFontSize(8);doc.text('Scan = bag details',95,73);
-    doc.setFontSize(9);doc.text('Items:',10,68);
-    let y=74; items.slice(0,18).forEach(i=>{doc.text('• '+(i.item_name||'').slice(0,40)+'  x'+i.qty,10,y);y+=5;});
-    doc.save(bag.bag_no+'.pdf');
-  }catch(e){toast('PDF error: '+(e.message||e));}
-}
-
-/* ════════════ BAGS LIST + DETAIL ════════════ */
+  logAct('EDIT_ITEM','item',id,'Edited '+it.item_name,{qty:{old:it.qty,new:nq},mrp:{old:it.mrp,new:nm}});
+  const idx=curItems.findIndex(x=>x.id===id);curItems[idx]=data;renderItems();toast('Updated ✓');}
+async function delItem(id){if(role==='STAFF'){toast('Staff delete nahi kar sakta');return;}
+  const reason=prompt('Delete reason (zaroori):');if(!reason||!reason.trim()){toast('Reason zaroori');return;}
+  const {error}=await sb.from('mr_items').update({is_deleted:true,deleted_by_user_id:U.user_id,deleted_by_name:U.user_name,deleted_at:nowISO(),deleted_reason:reason.trim()}).eq('id',id);
+  if(error){toast(error.message);return;}curItems=curItems.filter(i=>i.id!==id);logAct('DELETE_ITEM','item',id,'Deleted — '+reason.trim());renderItems();toast('Removed');}
+let recog=null;
+function startVoice(){const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR){toast('Voice support nahi (Chrome try karo)');return;}
+  const btn=$('voiceBtn');if(recog){try{recog.stop();}catch(_){}recog=null;btn.classList.remove('rec');$('vstat').textContent='';return;}
+  recog=new SR();recog.lang='en-IN';recog.interimResults=false;btn.classList.add('rec');$('vstat').textContent='🎤 Bolo: "Tata Salt 1kg qty 20"';
+  recog.onresult=e=>{const t=e.results[0][0].transcript;$('vstat').textContent='Suna: "'+t+'"';parseVoice(t);window._lastEntry='voice';};
+  recog.onerror=e=>{$('vstat').textContent='Voice error: '+e.error;};recog.onend=()=>{btn.classList.remove('rec');recog=null;};
+  try{recog.start();}catch(_){}}
+function parseVoice(t){let qty=null,txt=t.trim();let m=txt.match(/\b(?:qty|quantity|x|into|ginti)\s*([0-9]+)/i);
+  if(m){qty=parseInt(m[1],10);txt=txt.replace(m[0],'').trim();}
+  else{const m2=txt.match(/\s([0-9]+)\s*$/);if(m2){qty=parseInt(m2[1],10);txt=txt.slice(0,m2.index).trim();}}
+  if(txt)$('ieItem').value=txt;if(qty&&qty>0)$('ieQty').value=qty;erpSuggest(txt);validateEntry();$('ieMrp').focus();}
+async function scanBarcode(){if(!('BarcodeDetector' in window)){toast('Barcode support nahi — free-text use karo');return;}
+  try{const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
+    const v=document.createElement('video');v.srcObject=stream;v.setAttribute('playsinline','true');await v.play();$('vstat').textContent='📷 Barcode samne rakho…';
+    const det=new window.BarcodeDetector();let tries=0;
+    const tick=async()=>{tries++;try{const codes=await det.detect(v);if(codes&&codes.length){const code=codes[0].rawValue;stream.getTracks().forEach(t=>t.stop());$('vstat').textContent='Barcode: '+code;await barcodeLookup(code);window._lastEntry='scan';return;}}catch(_){}
+      if(tries<120)requestAnimationFrame(tick);else{stream.getTracks().forEach(t=>t.stop());$('vstat').textContent='Barcode nahi mila';}};tick();
+  }catch(e){toast('Camera error: '+(e.message||e));}}
+async function barcodeLookup(code){try{const cid=curBag?curBag.company_id:null;let qq=sb.from('mr_item_master').select('*').eq('barcode',code).limit(1);if(cid)qq=qq.eq('company_id',cid);
+  const {data}=await qq;if(data&&data.length){pickMaster(data[0]);return;}}catch(_){}
+  $('ieItem').value=$('ieItem').value||('Barcode '+code);validateEntry();$('ieQty').focus();}
+async function uploadPhotos(files){if(!curBag){toast('Bag nahi khula');return;}
+  for(const f of files){try{const path=curBag.bag_no+'/'+Date.now()+'_'+f.name.replace(/[^\w.\-]/g,'_');
+    const up=await sb.storage.from(BUCKET).upload(path,f,{upsert:false});if(up.error)throw up.error;
+    const pub=sb.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
+    const {data,error}=await sb.from('mr_bag_photos').insert({bag_id:curBag.id,storage_path:path,public_url:pub,file_name:f.name,mime_type:f.type,size_bytes:f.size,uploaded_by_user_id:U.user_id,uploaded_by_name:U.user_name,uploaded_device:deviceName}).select().single();
+    if(error)throw error;curPhotos.push(data);logAct('UPLOAD_PHOTO','photo',data.id,'Photo');}catch(e){toast('Photo error: '+(e.message||e));}}
+  renderThumbs();$('phInput').value='';}
+function renderThumbs(){$('thumbs').innerHTML=curPhotos.map(p=>`<img src="${esc(p.public_url)}">`).join('');}
+async function closeBag(){if(!curBag)return;if(curItems.length===0){toast('Bag khaali hai');return;}if(curPhotos.length===0){toast('Kam se kam 1 photo zaroori');return;}
+  if(!confirm('Bag close karein? Items + photos lock ho jayenge.'))return;
+  const {error}=await sb.from('mr_bags').update({status:'CLOSED',closed_by_user_id:U.user_id,closed_by_name:U.user_name,closed_at:nowISO(),updated_at:nowISO()}).eq('id',curBag.id);
+  if(error){toast(error.message);return;}logAct('CLOSE_BAG','bag',curBag.id,'Closed '+curBag.bag_no);await makePDF(curBag,curItems);toast('Bag closed ✓');
+  curBag=null;curItems=[];curPhotos=[];$('bagActive').classList.add('hide');$('bagSetup').classList.remove('hide');}
+async function makePDF(bag,items){try{const {jsPDF}=window.jspdf;const doc=new jsPDF({unit:'mm',format:'a5'});
+  const co=(companies.find(c=>c.id===bag.company_id)||{}).name||'';const tQ=items.reduce((a,i)=>a+Number(i.qty||0),0),tV=items.reduce((a,i)=>a+Number(i.amount||0),0);
+  doc.setFontSize(16);doc.text('DAMAGE BAG LABEL',10,13);doc.setFontSize(20);doc.setTextColor(0,150,170);doc.text(String(bag.bag_no),10,23);doc.setTextColor(0,0,0);
+  doc.setFontSize(10);doc.text('Company: '+co,10,32);doc.text('Source: '+bag.source_type.replace('_',' '),10,38);doc.text('Date: '+new Date().toLocaleString('en-IN'),10,44);doc.text('Total Qty: '+tQ,10,50);doc.text('Total Value: Rs '+tV.toFixed(2),10,56);
+  const qr=await QRCode.toDataURL(location.origin+location.pathname+'?bag='+encodeURIComponent(bag.bag_no),{width:240,margin:1});
+  doc.addImage(qr,'PNG',98,28,38,38);doc.setFontSize(7);doc.text('Scan = bag details',100,69);
+  doc.autoTable({startY:62,head:[['Item','Qty','MRP','Amt']],body:items.map(i=>[i.item_name,i.qty,i.mrp,i.amount]),styles:{fontSize:7},headStyles:{fillColor:[20,30,50]}});
+  doc.save(bag.bag_no+'.pdf');}catch(e){toast('PDF error: '+(e.message||e));}}
+function pillCls(s){return {OPEN:'p-open',CLOSED:'p-closed',TEST:'p-test',APPROVED:'p-approved',DELETED:'p-deleted'}[s]||'p-closed';}
 async function loadBags(){
-  let q=sb.from('mr_bags').select('*').eq('is_deleted',false).order('created_at',{ascending:false}).limit(100);
-  if($('fSource').value)q=q.eq('source_type',$('fSource').value);
-  if($('fStatus').value)q=q.eq('status',$('fStatus').value);
-  const bn=$('fBagNo')&&$('fBagNo').value.trim();
-  if(bn)q=q.ilike('bag_no','%'+bn+'%');
-  const {data,error}=await q; if(error){toast(error.message);return;}
+  let q=sb.from('mr_bags').select('*').neq('status','DELETED').order('created_at',{ascending:false}).limit(100);
+  if($('fSource').value)q=q.eq('source_type',$('fSource').value);if($('fStatus').value)q=q.eq('status',$('fStatus').value);
+  const bn=$('fBagNo')&&$('fBagNo').value.trim();if(bn)q=q.ilike('bag_no','%'+bn+'%');
+  const {data,error}=await q;if(error){toast(error.message);return;}
   $('bagList').innerHTML=(data||[]).map(b=>{const co=(companies.find(c=>c.id===b.company_id)||{}).name||'';
-    return `<div class="card" style="cursor:pointer" onclick="openBag('${b.id}')">
-      <div style="display:flex;align-items:center;gap:8px">
-        <div><b style="font-size:16px">${esc(b.bag_no)}</b><div class="muted">${esc(co)} · ${b.source_type.replace('_',' ')}</div></div>
-        <div style="margin-left:auto;text-align:right">
-          <span class="pill ${b.status==='OPEN'?'p-open':'p-closed'}">${b.status}</span>
-          <span class="pill ${b.claim_status==='SETTLED'?'p-settled':'p-pending'}">${b.claim_status}</span>
-          <div class="muted" style="margin-top:4px">${b.total_qty} qty · ${money(b.total_value)}</div>
-        </div>
-      </div></div>`;}).join('')||'<div class="muted">Koi bag nahi.</div>';
+    return `<div class="card" style="cursor:pointer" onclick="openBag('${b.id}')"><div style="display:flex;align-items:center;gap:8px">
+      <div><b style="font-size:16px">${esc(b.bag_no)}</b><div class="muted">${esc(co)} · ${b.source_type.replace('_',' ')}</div></div>
+      <div style="margin-left:auto;text-align:right"><span class="pill ${pillCls(b.status)}">${b.status}</span> <span class="pill ${b.claim_status==='SETTLED'?'p-settled':'p-pending'}">${b.claim_status}</span>
+      <div class="muted" style="margin-top:4px">${b.total_qty} qty · ${money(b.total_value)}</div></div></div></div>`;}).join('')||'<div class="muted">Koi bag nahi.</div>';
 }
 async function openBagByNo(no){const {data}=await sb.from('mr_bags').select('*').eq('bag_no',no).maybeSingle();if(data)openBag(data.id);}
 async function openBag(id){
   const {data:b}=await sb.from('mr_bags').select('*').eq('id',id).single();
   const {data:items}=await sb.from('mr_items').select('*').eq('bag_id',id).eq('is_deleted',false);
   const {data:photos}=await sb.from('mr_bag_photos').select('*').eq('bag_id',id).eq('is_deleted',false);
-  const co=(companies.find(c=>c.id===b.company_id)||{}).name||'';
-  const canReopen=can('reopen')&&b.status==='CLOSED';
-  const canSettle=can('settle');
-  $('sheet').innerHTML=`
-    <div style="display:flex;align-items:center;gap:8px"><b style="font-size:20px">${esc(b.bag_no)}</b>
-      <span class="pill ${b.status==='OPEN'?'p-open':'p-closed'}">${b.status}</span>
-      <button class="btn btn-sm" style="margin-left:auto" onclick="closeSheet()">✕</button></div>
+  const co=(companies.find(c=>c.id===b.company_id)||{}).name||'';const isA=b.status==='APPROVED';
+  const cR=can('reopen')&&b.status==='CLOSED',cA=(role==='OWNER')&&b.status==='CLOSED',cD=can('delete')&&!isA&&b.status!=='DELETED',cS=can('settle')&&!isA;
+  $('sheet').innerHTML=`<div style="display:flex;align-items:center;gap:8px"><b style="font-size:20px">${esc(b.bag_no)}</b><span class="pill ${pillCls(b.status)}">${b.status}</span><button class="btn btn-sm" style="margin-left:auto" onclick="closeSheet()">✕</button></div>
     <div class="muted" style="margin:6px 0">${esc(co)} · ${b.source_type.replace('_',' ')} · ${esc(b.retailer_name||'')}</div>
-    <div class="sum"><div class="s"><b>${(items||[]).length}</b><small>Items</small></div>
-      <div class="s"><b>${b.total_qty}</b><small>Qty</small></div><div class="s"><b>${money(b.total_value)}</b><small>Value</small></div></div>
-    <h3 style="margin-top:12px">Items</h3>
-    <div class="list">${(items||[]).map(i=>`<div class="it"><div class="nm"><b>${esc(i.item_name)}</b><small>${esc(i.brand_name||'')}</small></div><div class="q">${i.qty}×${money(i.mrp)}<br>${money(i.amount)}</div></div>`).join('')||'<div class="muted">—</div>'}</div>
-    <h3 style="margin-top:12px">Photos</h3>
-    <div class="thumbs">${(photos||[]).map(p=>`<img src="${esc(p.public_url)}">`).join('')||'<div class="muted">—</div>'}</div>
-    <div class="row" style="margin-top:14px">
-      <button class="btn" onclick='reprint(${JSON.stringify({id:b.id})})'>🏷️ PDF</button>
-      ${canSettle?`<button class="btn" onclick="claimChange('${b.id}','${b.claim_status}')">Claim: ${b.claim_status}</button>`:''}
-      ${canReopen?`<button class="btn btn-red" onclick="reopenBag('${b.id}','${esc(b.bag_no)}')">Reopen</button>`:''}
-    </div>
-    <p class="muted" style="margin-top:10px">Created: ${esc(b.created_by_name||'')} · ${new Date(b.created_at).toLocaleString('en-IN')}${b.closed_by_name?'<br>Closed: '+esc(b.closed_by_name):''}${b.reopened_by_name?'<br>Reopened: '+esc(b.reopened_by_name)+' ('+esc(b.reopen_reason||'')+')':''}</p>`;
+    <div class="sum"><div class="s"><b>${(items||[]).length}</b><small>Items</small></div><div class="s"><b>${b.total_qty}</b><small>Qty</small></div><div class="s"><b>${money(b.total_value)}</b><small>Value</small></div></div>
+    <h3 style="margin-top:12px">Items</h3><div class="list">${(items||[]).map(i=>`<div class="it"><div class="nm"><b>${esc(i.item_name)}</b><small>${esc(i.brand_name||'')}</small></div><div class="q">${i.qty}×${money(i.mrp)}<br>${money(i.amount)}</div></div>`).join('')||'<div class="muted">—</div>'}</div>
+    <h3 style="margin-top:12px">Photos</h3><div class="thumbs">${(photos||[]).map(p=>`<img src="${esc(p.public_url)}">`).join('')||'<div class="muted">—</div>'}</div>
+    <div class="row" style="margin-top:14px;flex-wrap:wrap">
+      <button class="btn btn-sm" onclick='reprint("${b.id}")'>🏷️ PDF</button>
+      ${cS?`<button class="btn btn-sm" onclick="claimChange('${b.id}','${b.claim_status}')">Claim: ${b.claim_status}</button>`:''}
+      ${cR?`<button class="btn btn-sm btn-red" onclick="reopenBag('${b.id}','${esc(b.bag_no)}')">Reopen</button>`:''}
+      ${cA?`<button class="btn btn-sm btn-grn" onclick="approveBag('${b.id}','${esc(b.bag_no)}')">✅ Approve (lock)</button>`:''}
+      ${cD?`<button class="btn btn-sm btn-red" onclick="deleteBag('${b.id}','${esc(b.bag_no)}')">Delete</button>`:''}</div>
+    ${isA?'<p class="muted" style="margin-top:8px">🔒 APPROVED — permanently locked.</p>':''}
+    <p class="muted" style="margin-top:8px">Created: ${esc(b.created_by_name||'')} · ${new Date(b.created_at).toLocaleString('en-IN')}${b.closed_by_name?'<br>Closed: '+esc(b.closed_by_name):''}${b.reopened_by_name?'<br>Reopened: '+esc(b.reopened_by_name)+' ('+esc(b.reopen_reason||'')+')':''}${b.approved_by_name?'<br>Approved: '+esc(b.approved_by_name):''}</p>`;
   $('ov').classList.add('show');
 }
 function closeSheet(){$('ov').classList.remove('show');}
-async function reprint(o){const {data:b}=await sb.from('mr_bags').select('*').eq('id',o.id).single();
-  const {data:items}=await sb.from('mr_items').select('*').eq('bag_id',o.id).eq('is_deleted',false); await makePDF(b,items||[]);}
-async function claimChange(id,cur){
-  if(!can('settle')){toast('Permission nahi');return;}
-  const next=prompt('Claim status (PENDING/SUBMITTED/PARTIAL/SETTLED/REJECTED):',cur); if(!next)return;
-  const up={claim_status:next.toUpperCase(),updated_at:new Date().toISOString(),updated_by_user_id:U.user_id,updated_by_name:U.user_name};
-  if(next.toUpperCase()==='SETTLED'){up.settled_at=new Date().toISOString();up.settled_by_user_id=U.user_id;up.settled_by_name=U.user_name;}
-  const {error}=await sb.from('mr_bags').update(up).eq('id',id); if(error){toast(error.message);return;}
-  logAct('CHANGE_CLAIM_STATUS','bag',id,'Claim -> '+next.toUpperCase(),{claim_status:{old:cur,new:next.toUpperCase()}});
-  closeSheet();loadBags();toast('Claim updated ✓');
-}
-async function reopenBag(id,no){
-  if(!can('reopen')){toast('Sirf Manager/Owner reopen kar sakte hain');return;}
-  const reason=prompt('Reopen ka reason (zaroori):'); if(!reason||!reason.trim()){toast('Reason zaroori');return;}
+async function reprint(id){const {data:b}=await sb.from('mr_bags').select('*').eq('id',id).single();const {data:items}=await sb.from('mr_items').select('*').eq('bag_id',id).eq('is_deleted',false);await makePDF(b,items||[]);}
+async function claimChange(id,cur){if(!can('settle')){toast('Permission nahi');return;}
+  const next=(prompt('Claim: PENDING / SUBMITTED / PARTIAL / SETTLED / REJECTED / CLOSED',cur)||'').toUpperCase().trim();
+  if(!['PENDING','SUBMITTED','PARTIAL','SETTLED','REJECTED','CLOSED'].includes(next)){toast('Galat status');return;}
+  const up={claim_status:next,updated_at:nowISO(),updated_by_user_id:U.user_id,updated_by_name:U.user_name};
+  if(next==='PARTIAL'||next==='SETTLED'){up.settled_amount=parseFloat(prompt('Settled amount ₹:','')||'0');up.settled_at=nowISO();up.settled_by_user_id=U.user_id;up.settled_by_name=U.user_name;}
+  if(next==='SUBMITTED')up.claim_submitted_at=nowISO();
+  const {error}=await sb.from('mr_bags').update(up).eq('id',id);if(error){toast(error.message);return;}
+  logAct('CHANGE_CLAIM','bag',id,'Claim -> '+next,{claim_status:{old:cur,new:next}});closeSheet();loadBags();toast('Claim updated ✓');}
+async function reopenBag(id,no){if(!can('reopen')){toast('Sirf Manager/Owner');return;}
+  const reason=prompt('Reopen reason (zaroori):');if(!reason||!reason.trim()){toast('Reason zaroori');return;}
   const b=(await sb.from('mr_bags').select('reopen_count').eq('id',id).single()).data;
-  const {error}=await sb.from('mr_bags').update({status:'OPEN',reopened_by_user_id:U.user_id,reopened_by_name:U.user_name,
-    reopened_at:new Date().toISOString(),reopen_reason:reason.trim(),reopen_count:((b&&b.reopen_count)||0)+1,updated_at:new Date().toISOString()}).eq('id',id);
-  if(error){toast(error.message);return;}
-  logAct('REOPEN_BAG','bag',id,'Reopened '+no+' — '+reason.trim());
-  closeSheet();loadBags();toast('Bag reopened');
-}
-
-/* ════════════ REPORTS ════════════ */
+  const {error}=await sb.from('mr_bags').update({status:'OPEN',reopened_by_user_id:U.user_id,reopened_by_name:U.user_name,reopened_at:nowISO(),reopen_reason:reason.trim(),reopen_count:((b&&b.reopen_count)||0)+1,updated_at:nowISO()}).eq('id',id);
+  if(error){toast(error.message);return;}logAct('REOPEN_BAG','bag',id,'Reopened '+no+' — '+reason.trim());closeSheet();loadBags();toast('Reopened');}
+async function approveBag(id,no){if(role!=='OWNER'){toast('Sirf Owner');return;}
+  if(!confirm('Approve? Iske baad PERMANENTLY lock (no edit/reopen/delete).'))return;
+  const {error}=await sb.from('mr_bags').update({status:'APPROVED',approved_by_user_id:U.user_id,approved_by_name:U.user_name,approved_at:nowISO(),updated_at:nowISO()}).eq('id',id);
+  if(error){toast(error.message);return;}logAct('APPROVE_BAG','bag',id,'Approved '+no);closeSheet();loadBags();toast('Approved + locked 🔒');}
+async function deleteBag(id,no){if(!can('delete')){toast('Permission nahi');return;}
+  const reason=prompt('Bag delete reason (zaroori):');if(!reason||!reason.trim()){toast('Reason zaroori');return;}
+  const {error}=await sb.from('mr_bags').update({status:'DELETED',is_deleted:true,deleted_by_user_id:U.user_id,deleted_by_name:U.user_name,deleted_at:nowISO(),deleted_reason:reason.trim(),updated_at:nowISO()}).eq('id',id);
+  if(error){toast(error.message);return;}logAct('DELETE_BAG','bag',id,'Deleted '+no+' — '+reason.trim());closeSheet();loadBags();toast('Bag deleted');}
 async function report(kind){
-  $('repOut').classList.remove('hide'); $('repBody').innerHTML='Loading…';
-  const titles={company:'Company-wise Claim',brand:'Brand-wise Damage',item:'Item-wise Damage',bag:'Bag-wise',
-    pending:'Claim Pending',settled:'Claim Settled',opening:'Opening Damage',warehouse:'Warehouse Damage',market:'Market Return',staff:'Staff Productivity'};
-  $('repTitle').textContent=titles[kind];
+  $('repOut').classList.remove('hide');$('repBody').innerHTML='Loading…';
+  const T={company:'Company-wise Claim',brand:'Brand-wise Damage',item:'Item-wise Damage',bag:'Bag-wise',pending:'Claim Pending',settled:'Claim Settled',opening:'Opening Damage',warehouse:'Warehouse Damage',market:'Market Return',staff:'Staff Productivity'};
+  $('repTitle').textContent=T[kind];let head=[],rows=[];
   try{
-    if(kind==='company'){const {data}=await sb.from('v_mr_company_claim').select('*');
-      tbl(['Company','Bags','Claimed','Settled','Variance'],(data||[]).map(r=>[r.company,r.bags,money(r.claimed_value),money(r.settled_value),money(r.variance)]));}
-    else if(kind==='brand'){const {data}=await sb.from('v_mr_brand_damage').select('*');
-      tbl(['Company','Brand','Qty','Value'],(data||[]).map(r=>[r.company,r.brand||'—',r.qty,money(r.value)]));}
-    else if(kind==='item'){const {data}=await sb.from('v_mr_item_damage').select('*').order('value',{ascending:false}).limit(200);
-      tbl(['Company','Item','Qty','Value'],(data||[]).map(r=>[r.company,r.item_name,r.qty,money(r.value)]));}
-    else if(kind==='staff'){const {data}=await sb.from('v_mr_staff_productivity').select('*').order('day',{ascending:false}).limit(300);
-      tbl(['Staff','Action','Day','Count'],(data||[]).map(r=>[r.user_name||r.user_id,r.action_type,r.day,r.actions]));}
-    else if(kind==='bag'){const {data}=await sb.from('mr_bags').select('*').eq('is_deleted',false).order('created_at',{ascending:false}).limit(200);
-      tbl(['Bag','Status','Claim','Qty','Value'],(data||[]).map(r=>[r.bag_no,r.status,r.claim_status,r.total_qty,money(r.total_value)]));}
-    else { // pending/settled/opening/warehouse -> filter bags
-      let q=sb.from('mr_bags').select('*').eq('is_deleted',false);
-      if(kind==='pending')q=q.eq('claim_status','PENDING'); if(kind==='settled')q=q.eq('claim_status','SETTLED');
-      if(kind==='opening')q=q.eq('source_type','OPENING_DAMAGE'); if(kind==='warehouse')q=q.eq('source_type','WAREHOUSE_DAMAGE');
-      if(kind==='market')q=q.eq('source_type','MARKET_RETURN');
-      const {data}=await q.order('created_at',{ascending:false}).limit(200);
-      tbl(['Bag','Company','Qty','Value','Claim'],(data||[]).map(r=>[r.bag_no,(companies.find(c=>c.id===r.company_id)||{}).name||'',r.total_qty,money(r.total_value),r.claim_status]));
-    }
-  }catch(e){$('repBody').innerHTML='<div class="muted">Error: '+esc(e.message||e)+' — SQL views bani hain? </div>';}
+    if(kind==='company'){const {data}=await sb.from('v_mr_company_claim').select('*');head=['Company','Bags','Claimed','Settled','Variance'];rows=(data||[]).map(r=>[r.company,r.bags,r.claimed_value,r.settled_value,r.variance]);}
+    else if(kind==='brand'){const {data}=await sb.from('v_mr_brand_damage').select('*');head=['Company','Brand','Qty','Value'];rows=(data||[]).map(r=>[r.company,r.brand||'—',r.qty,r.value]);}
+    else if(kind==='item'){const {data}=await sb.from('v_mr_item_damage').select('*').order('value',{ascending:false}).limit(500);head=['Company','Item','Qty','Value'];rows=(data||[]).map(r=>[r.company,r.item_name,r.qty,r.value]);}
+    else if(kind==='staff'){const {data}=await sb.from('v_mr_staff_time').select('*').order('day',{ascending:false}).limit(300);head=['Staff','Day','Actions','Working min'];rows=(data||[]).map(r=>[r.user_name||r.user_id,r.day,r.actions,r.working_minutes]);}
+    else if(kind==='bag'){const {data}=await sb.from('mr_bags').select('*').neq('status','DELETED').neq('status','TEST').order('created_at',{ascending:false}).limit(300);head=['Bag','Status','Claim','Qty','Value'];rows=(data||[]).map(r=>[r.bag_no,r.status,r.claim_status,r.total_qty,r.total_value]);}
+    else{let q=sb.from('mr_bags').select('*').eq('is_deleted',false).neq('status','TEST');
+      if(kind==='pending')q=q.eq('claim_status','PENDING');if(kind==='settled')q=q.eq('claim_status','SETTLED');
+      if(kind==='opening')q=q.eq('source_type','OPENING_DAMAGE');if(kind==='warehouse')q=q.eq('source_type','WAREHOUSE_DAMAGE');if(kind==='market')q=q.eq('source_type','MARKET_RETURN');
+      const {data}=await q.order('created_at',{ascending:false}).limit(300);head=['Bag','Company','Qty','Value','Claim'];rows=(data||[]).map(r=>[r.bag_no,(companies.find(c=>c.id===r.company_id)||{}).name||'',r.total_qty,r.total_value,r.claim_status]);}
+    lastReport={title:T[kind],head,rows};renderReport();
+  }catch(e){$('repBody').innerHTML='<div class="muted">Error: '+esc(e.message||e)+'</div>';}
 }
-function tbl(head,rows){
-  $('repBody').innerHTML=`<table><thead><tr>${head.map(h=>`<th>${esc(h)}</th>`).join('')}</tr></thead>
-    <tbody>${rows.map(r=>`<tr>${r.map((c,i)=>`<td${i>1?' class="r"':''}>${esc(c)}</td>`).join('')}</tr>`).join('')||`<tr><td colspan="${head.length}" class="muted">Koi data nahi</td></tr>`}</tbody></table>`;
+function renderReport(){const {head,rows}=lastReport;
+  $('repBody').innerHTML=`<table><thead><tr>${head.map(h=>`<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map((c,i)=>`<td${i>1?' class="r"':''}>${esc(c)}</td>`).join('')}</tr>`).join('')||`<tr><td colspan="${head.length}" class="muted">Koi data nahi</td></tr>`}</tbody></table>`;}
+function exportXlsx(){if(!lastReport.head.length){toast('Pehle report kholo');return;}
+  const ws=XLSX.utils.aoa_to_sheet([lastReport.head,...lastReport.rows]);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Report');XLSX.writeFile(wb,(lastReport.title||'report').replace(/\s+/g,'_')+'.xlsx');logAct('EXPORT','report',null,'Excel: '+lastReport.title);}
+function exportPdf(){if(!lastReport.head.length){toast('Pehle report kholo');return;}
+  const {jsPDF}=window.jspdf;const doc=new jsPDF();doc.setFontSize(14);doc.text(lastReport.title,14,16);
+  doc.autoTable({startY:22,head:[lastReport.head],body:lastReport.rows,styles:{fontSize:8},headStyles:{fillColor:[20,30,50]}});doc.save((lastReport.title||'report').replace(/\s+/g,'_')+'.pdf');logAct('EXPORT','report',null,'PDF: '+lastReport.title);}
+async function loadMasterList(q){
+  let qq=sb.from('mr_item_master').select('*').eq('is_deleted',false).order('item_name').limit(200);
+  if(q&&q.trim())qq=qq.ilike('item_name','%'+q.trim()+'%');
+  const {data}=await qq;
+  $('masterList').innerHTML=(data||[]).map(m=>`<div class="card"><div class="nm"><b>${esc(m.item_name)}</b><div class="muted">${esc(brandName(m.brand_id))} · ₹${m.mrp||0} ${m.is_active?'':'· ❌ off'} ${m.is_approved?'':'· ⏳ pending'}</div></div>
+    <div class="row" style="margin-top:8px;flex-wrap:wrap"><button class="btn btn-sm" onclick="editMaster('${m.id}')">Edit MRP</button>
+    <button class="btn btn-sm" onclick="toggleMaster('${m.id}',${m.is_active})">${m.is_active?'Disable':'Enable'}</button>
+    ${m.is_approved?'':`<button class="btn btn-sm btn-grn" onclick="approveMaster('${m.id}')">Approve</button>`}
+    <button class="btn btn-sm" onclick="mergeMaster('${m.id}','${esc(m.item_name)}')">Merge→</button></div></div>`).join('')||'<div class="muted">Koi item nahi</div>';
 }
-
-/* ════════════ USERS (owner / bootstrap) ════════════ */
+async function editMaster(id){const {data:m}=await sb.from('mr_item_master').select('*').eq('id',id).single();
+  const nm=parseFloat(prompt('Naya MRP:',m.mrp||0));if(!(nm>0)){toast('MRP galat');return;}
+  const {error}=await sb.from('mr_item_master').update({mrp:nm,updated_by_user_id:U.user_id,updated_by_name:U.user_name,updated_at:nowISO()}).eq('id',id);
+  if(error){toast(error.message);return;}logAct('EDIT_ITEM_MASTER','item_master',id,'MRP -> '+nm,{mrp:{old:m.mrp,new:nm}});loadMasterList($('imSearch').value);toast('Updated ✓');}
+async function toggleMaster(id,active){const {error}=await sb.from('mr_item_master').update({is_active:!active,updated_at:nowISO()}).eq('id',id);if(error){toast(error.message);return;}logAct(active?'DISABLE_ITEM':'ENABLE_ITEM','item_master',id,'');loadMasterList($('imSearch').value);}
+async function approveMaster(id){if(role!=='OWNER'){toast('Sirf Owner');return;}const {error}=await sb.from('mr_item_master').update({is_approved:true,approved_by_user_id:U.user_id,approved_by_name:U.user_name,approved_at:nowISO()}).eq('id',id);if(error){toast(error.message);return;}logAct('APPROVE_ITEM_MASTER','item_master',id,'');loadMasterList($('imSearch').value);toast('Approved ✓');}
+async function mergeMaster(dupId,dupName){if(role!=='OWNER'){toast('Sirf Owner');return;}
+  const target=prompt('Kis item naam mein merge karein? (part likho):',dupName);if(!target)return;
+  const {data:cands}=await sb.from('mr_item_master').select('*').eq('is_deleted',false).ilike('item_name','%'+target.trim()+'%').neq('id',dupId).limit(5);
+  if(!cands||!cands.length){toast('Target nahi mila');return;}const canon=cands[0];
+  if(!confirm('"'+dupName+'" -> "'+canon.item_name+'" merge? Saari entries shift hongi.'))return;
+  await sb.from('mr_items').update({master_id:canon.id,brand_id:canon.brand_id,brand_name:brandName(canon.brand_id)}).eq('master_id',dupId);
+  await sb.from('mr_item_master').update({is_deleted:true,is_active:false,updated_at:nowISO()}).eq('id',dupId);
+  logAct('MERGE_ITEM_MASTER','item_master',dupId,'Merged "'+dupName+'" -> "'+canon.item_name+'"');loadMasterList($('imSearch').value);toast('Merged ✓');}
 async function loadUsers(){
   if(window._bootstrap)$('bootNotice').classList.remove('hide');
   const {data}=await sb.from('mr_users').select('*').order('role');
-  $('userList').innerHTML=(data||[]).map(u=>`<div class="it"><div class="nm"><b>${esc(u.name||u.mobile)}</b><small>${esc(u.mobile)} · ${u.is_active?'active':'inactive'}</small></div>
-    <span class="badge ${u.role==='OWNER'?'b-owner':u.role==='MANAGER'?'b-manager':'b-staff'}">${u.role}</span></div>`).join('')||'<div class="muted">Koi user nahi</div>';
+  const t=new Date();t.setHours(0,0,0,0);
+  const {data:acts}=await sb.from('mr_activity_log').select('user_mobile,action_type').gte('created_at',t.toISOString());
+  const by={};(acts||[]).forEach(a=>{const k=a.user_mobile;if(!k)return;by[k]=by[k]||{items:0,bags:0,photos:0};if(a.action_type==='ADD_ITEM')by[k].items++;if(a.action_type==='CLOSE_BAG')by[k].bags++;if(a.action_type==='UPLOAD_PHOTO')by[k].photos++;});
+  $('userList').innerHTML=(data||[]).map(u=>{const k=by[u.mobile]||{items:0,bags:0,photos:0};const own=u.role==='OWNER';
+    return `<div class="it"><div class="nm"><b>${esc(u.name||u.mobile)}</b><small>${esc(u.mobile)} · <span class="badge ${own?'b-owner':u.role==='MANAGER'?'b-manager':'b-staff'}">${u.role}</span> ${u.is_active?'':'· ❌ disabled'}<br>Aaj: ${k.items} items · ${k.bags} bags · ${k.photos} photos<br>Last login: ${u.last_login_at?new Date(u.last_login_at).toLocaleString('en-IN'):'—'}</small></div>
+    ${own?'<span class="badge b-owner">🔒</span>':`<button class="btn btn-sm" onclick="toggleUser('${u.id}',${u.is_active})">${u.is_active?'Disable':'Enable'}</button>`}</div>`;}).join('')||'<div class="muted">Koi user nahi</div>';
   loadDevices();
 }
-async function loadDevices(){
-  const {data}=await sb.from('mr_devices').select('*').order('last_activity_at',{ascending:false}).limit(100);
-  $('deviceList').innerHTML=(data||[]).map(d=>`<div class="it">
-    <div class="nm"><b>${esc(d.device_name||'device')}</b><small>${esc(d.user_mobile)} · ${d.is_approved?'✅ approved':'⏳ pending'} · last: ${d.last_activity_at?new Date(d.last_activity_at).toLocaleString('en-IN'):'—'}</small></div>
-    ${d.is_approved
-      ? `<button class="btn btn-sm btn-red" onclick="setDevice('${d.id}',false)">Revoke</button>`
-      : `<button class="btn btn-sm btn-grn" onclick="setDevice('${d.id}',true)">Approve</button>`}
-  </div>`).join('')||'<div class="muted">Koi device nahi</div>';
-}
-async function setDevice(id,approve){
-  if(role!=='OWNER'){toast('Sirf Owner device approve kar sakta hai');return;}
-  const up=approve?{is_approved:true,approved_by_user_id:U.user_id,approved_by_name:U.user_name,approved_at:new Date().toISOString()}:{is_approved:false};
-  const {error}=await sb.from('mr_devices').update(up).eq('id',id); if(error){toast(error.message);return;}
-  logAct(approve?'APPROVE_DEVICE':'REVOKE_DEVICE','device',id,(approve?'Approved':'Revoked')+' device');
-  loadDevices(); toast(approve?'Device approved ✓':'Device revoked');
-}
-async function saveUser(){
-  if(role!=='OWNER'&&!window._bootstrap){toast('Sirf Owner');return;}
-  const mobile=$('uMobile').value.replace(/^\+?91/,'').trim(); if(mobile.length<10){toast('Mobile galat');return;}
+async function toggleUser(id,active){if(role!=='OWNER'){toast('Sirf Owner');return;}
+  const {error}=await sb.from('mr_users').update({is_active:!active}).eq('id',id);if(error){toast(error.message);return;}
+  logAct(active?'DISABLE_USER':'ENABLE_USER','user',id,'');loadUsers();toast(active?'Disabled':'Enabled');}
+async function saveUser(){if(role!=='OWNER'&&!window._bootstrap){toast('Sirf Owner');return;}
+  const mobile=$('uMobile').value.replace(/^\+?91/,'').trim();if(mobile.length<10){toast('Mobile galat');return;}
   const row={mobile,name:$('uN').value.trim()||null,role:$('uRole').value,is_active:true,is_approved:true,created_by_user_id:U.user_id,created_by_name:U.user_name};
   const {data,error}=await sb.from('mr_users').upsert(row,{onConflict:'mobile'}).select().single();
-  if(error){toast(error.message);return;}
-  logAct('ADD_USER','user',data.id,'User '+mobile+' = '+row.role);
-  window._bootstrap=false;$('bootNotice').classList.add('hide');
-  $('uMobile').value='';$('uN').value='';
-  // refresh own role if self
-  if(mobile===U.mobile){role=row.role;const b=$('ubadge');b.textContent=role;b.className='badge '+(role==='OWNER'?'b-owner':role==='MANAGER'?'b-manager':'b-staff');
-    document.querySelectorAll('.tab-owner').forEach(t=>t.classList.toggle('hide',role!=='OWNER'));}
-  loadUsers();toast('User saved ✓');
+  if(error){toast(error.message);return;}logAct('ADD_USER','user',data.id,'User '+mobile+' = '+row.role);
+  window._bootstrap=false;$('bootNotice').classList.add('hide');$('uMobile').value='';$('uN').value='';
+  if(mobile===U.mobile){role=row.role;const b=$('ubadge');b.textContent=role;b.className='badge '+(role==='OWNER'?'b-owner':role==='MANAGER'?'b-manager':'b-staff');document.querySelectorAll('.tab-owner').forEach(t=>t.classList.toggle('hide',role!=='OWNER'));}
+  loadUsers();toast('User saved ✓');}
+async function loadDevices(){
+  const {data}=await sb.from('mr_devices').select('*').order('last_activity_at',{ascending:false}).limit(100);
+  $('deviceList').innerHTML=(data||[]).map(d=>`<div class="it"><div class="nm"><b>${esc(d.device_name||'device')}</b><small>${esc(d.user_mobile)} · ${d.is_approved?'✅ approved':'⏳ pending'} · ${d.last_activity_at?new Date(d.last_activity_at).toLocaleString('en-IN'):'—'}</small></div>
+    ${d.is_approved?`<button class="btn btn-sm btn-red" onclick="setDevice('${d.id}','${esc(d.user_mobile)}',false)">Revoke</button>`:`<button class="btn btn-sm btn-grn" onclick="setDevice('${d.id}','${esc(d.user_mobile)}',true)">Approve</button>`}</div>`).join('')||'<div class="muted">Koi device nahi</div>';
 }
-
-/* ════════════ NAV ════════════ */
+async function setDevice(id,mob,approve){if(role!=='OWNER'){toast('Sirf Owner');return;}
+  if(approve){await sb.from('mr_devices').update({is_approved:false}).eq('user_mobile',mob).neq('id',id);} // one approved device per user
+  const up=approve?{is_approved:true,approved_by_user_id:U.user_id,approved_by_name:U.user_name,approved_at:nowISO()}:{is_approved:false};
+  const {error}=await sb.from('mr_devices').update(up).eq('id',id);if(error){toast(error.message);return;}
+  logAct(approve?'APPROVE_DEVICE':'REVOKE_DEVICE','device',id,(approve?'Approved':'Revoked')+' '+mob);loadDevices();toast(approve?'Approved ✓':'Revoked');}
 function switchTab(t){
   document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x.dataset.t===t));
-  ['entry','bags','reports','users'].forEach(p=>$('p-'+p).classList.toggle('hide',p!==t));
-  if(t==='bags')loadBags(); if(t==='users')loadUsers();
+  ['entry','bags','reports','items','users'].forEach(p=>$('p-'+p).classList.toggle('hide',p!==t));
+  if(t==='bags')loadBags();if(t==='users')loadUsers();if(t==='items')loadMasterList('');
 }
 document.querySelectorAll('.tab').forEach(tab=>tab.addEventListener('click',()=>switchTab(tab.dataset.t)));
-
-/* go */
 boot();
 </script>
 </body>
