@@ -111,12 +111,13 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
     <div id="bagActive" class="hide">
       <div class="card" style="display:flex;align-items:center;gap:10px">
         <div><div style="font-weight:800;font-size:18px" id="abNo">BAG-—</div><div class="muted" id="abMeta">—</div></div>
-        <span class="pill p-open" id="abStatus" style="margin-left:auto">OPEN</span>
+        <button class="btn btn-sm" style="margin-left:auto;flex:0 0 auto" onclick="switchTab('bags')">← Bags</button>
+        <span class="pill p-open" id="abStatus">OPEN</span>
       </div>
       <div class="card">
         <h3>Add Item (fast)</h3>
         <label>Item <span class="muted" style="text-transform:none">— type to search (brand+MRP auto)</span></label>
-        <input id="ieItem" placeholder="Item naam" autocomplete="off" oninput="erpSuggest(this.value)">
+        <input id="ieItem" placeholder="Item naam" autocomplete="off" oninput="erpSuggest(this.value)" onfocus="setTimeout(()=>this.scrollIntoView({block:'center',behavior:'smooth'}),300)">
         <div id="vstat" class="vstat"></div>
         <div id="sugg" class="list" style="margin-top:6px"></div>
         <div id="recent" class="chips"></div>
@@ -129,7 +130,7 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
           <div style="flex:1.3"><label>Qty <span class="muted" style="text-transform:none">(1+9=10)</span></label>
             <div class="qtybar"><button class="btn qbtn" onclick="bumpQty(-1)">−</button>
             <input id="ieQty" inputmode="text" value="1" oninput="validateEntry()"><button class="btn qbtn" onclick="bumpQty(1)">＋</button></div></div>
-          <div><label>MRP ₹ *</label><input id="ieMrp" type="number" inputmode="decimal" value="" placeholder="0" oninput="validateEntry()">
+          <div><label>MRP ₹ *</label><input id="ieMrp" type="number" inputmode="decimal" value="" placeholder="0" oninput="validateEntry()" onfocus="setTimeout(()=>this.scrollIntoView({block:'center',behavior:'smooth'}),300)">
             <div class="amt" id="ieAmt">Amount ₹0.00</div></div>
         </div>
         <label style="display:flex;align-items:center;gap:8px;text-transform:none;font-size:13px;color:var(--txt)">
@@ -139,7 +140,7 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
           <label>Warehouse</label><select id="ieReplWh"></select>
         </div>
         <div class="err" id="ieErr"></div>
-        <button class="btn btn-grn btn-block" id="saveBtn" style="margin-top:6px" onclick="saveItem(true)" disabled>Save &amp; Next ⏎</button>
+        <button class="btn btn-grn btn-block" id="saveBtn" style="margin-top:6px;position:sticky;bottom:8px;z-index:6" onclick="saveItem(true)" disabled>Save &amp; Next ⏎</button>
       </div>
       <div class="card">
         <h3>Is bag ke items</h3>
@@ -147,7 +148,7 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
         <div id="bagItems" class="list" style="margin-top:10px"></div>
       </div>
       <div class="card">
-        <h3>Photos (close ke liye zaroori)</h3>
+        <h3>Photos (optional — high-value / leakage / expiry / company proof ke liye)</h3>
         <input type="file" id="phInput" accept="image/*" capture="environment" multiple onchange="uploadPhotos(this.files)">
         <div id="thumbs" class="thumbs"></div>
         <button class="btn btn-cyan btn-block" style="margin-top:14px" onclick="closeBag()">Close Bag + PDF 🏷️</button>
@@ -201,7 +202,7 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
 <script>
 /* ===== STAGING BUILD — points to vijay-erp-staging (NOT production) ===== */
 const SUPA_URL='https://aozwarjnwclkalxfvmug.supabase.co';
-const SUPA_KEY='sb_publishable_Zol61pF3npwB8gR3sr-baA_O5a-NtSw'; /* <-- Staging Project Settings > API > anon/publishable key */
+const SUPA_KEY='sb_publishable_Zol61pF3npwB8gR3sr-baA_O5a-NtSw'; /* staging anon/publishable key */
 const BUCKET='mr-bag-photos';
 const sb=supabase.createClient(SUPA_URL,SUPA_KEY);
 let U=null,role='STAFF',deviceId='',deviceName='';
@@ -307,7 +308,7 @@ function erpSuggest(q){pickedMaster=null;$('ieBrandView').value='';clearTimeout(
     if(!rows.length){let qq=sb.from('mr_item_master').select('*').eq('is_deleted',false).eq('is_active',true).ilike('item_name','%'+q+'%').limit(8);
       if(cid)qq=qq.eq('company_id',cid);const {data}=await qq;rows=data||[];}
     let html=rows.map(r=>`<div class="it" style="cursor:pointer" onclick='pickMaster(${esc(JSON.stringify(r))})'><div class="nm"><b>${esc(r.item_name)}</b><small>${esc(brandName(r.brand_id))}${r.mrp?(' · ₹'+r.mrp):''}${r.is_approved?'':' · ⏳'}</small></div></div>`).join('');
-    html+=`<div class="it" style="cursor:pointer;border-color:var(--cyan)" onclick="newItem()"><div class="nm"><b style="color:var(--cyan)">＋ Naya item add karo</b><small>"${esc(q)}" master mein nahi mila</small></div></div>`;
+    if(rows.length===0){ html+=`<div class="it" style="cursor:pointer;border-color:var(--cyan)" onclick="newItem()"><div class="nm"><b style="color:var(--cyan)">＋ Naya item add karo</b><small>"${esc(q)}" master mein nahi mila</small></div></div>`; }
     $('sugg').innerHTML=html;
   }catch(e){$('sugg').innerHTML='';}},220);}
 function brandName(id){return (brands.find(b=>b.id===id)||{}).name||'';}
@@ -320,15 +321,10 @@ async function newItem(){
     if(mm.length){const list=mm.slice(0,5).map(x=>'• '+x.item_name+(x.mrp?(' (Rs '+x.mrp+')'):'')).join('\n');
       if(!confirm('Milte-julte items pehle se hain:\n\n'+list+'\n\nInme se koi NAHI hai?\nOK = naya item banao\nCancel = upar list se sahi item chuno')){$('sugg').scrollIntoView({behavior:'smooth'});return;}}
   }catch(_){}
-  const cid=curBag.company_id;const cbs=brands.filter(b=>b.company_id===cid);
-  const bopts=cbs.map((b,i)=>(i+1)+'. '+b.name).join('\n');
-  const bsel=prompt('Brand chuno (number) ya naya brand naam likho:\n'+bopts);if(bsel===null)return;
-  let brand_id=null;const n=parseInt(bsel,10);
-  if(n>=1&&n<=cbs.length)brand_id=cbs[n-1].id;
-  else{const bn=bsel.trim();if(bn){const {data:bd,error:be}=await sb.from('mr_brands').insert(audit({company_id:cid,name:bn})).select().single();if(be){toast(be.message);return;}brands.push(bd);brand_id=bd.id;}}
-  const mrp=parseFloat(prompt('MRP ₹ (>0):')||'0');if(!(mrp>0)){toast('MRP > 0 zaroori');return;}
-  const barcode=(prompt('Barcode (optional):')||'').trim()||null;
-  const row=audit({company_id:cid,brand_id:brand_id,item_name:name,normalized_name:norm(name),mrp:mrp,barcode:barcode,is_approved:(role==='OWNER')});
+  const cid=curBag.company_id;
+  /* manual brand creation OFF (#4): naya item -> brand null; owner approve/merge mein assign karega */
+  const mrp=parseFloat(prompt('MRP Rs (>0) — required:')||'0');if(!(mrp>0)){toast('MRP > 0 zaroori');return;}
+  const row=audit({company_id:cid,brand_id:null,item_name:name,normalized_name:norm(name),mrp:mrp,barcode:null,is_approved:(role==='OWNER')});
   const {data,error}=await sb.from('mr_item_master').insert(row).select().single();
   if(error){toast('Master error: '+error.message);return;}
   logAct('ADD_ITEM_MASTER','item_master',data.id,'New master '+name);pickMaster(data);toast('Item saved ✓'+(data.is_approved?'':' (approval pending)'));
@@ -344,6 +340,7 @@ function clearRow(){$('ieItem').value='';$('ieBrandView').value='';$('ieQty').va
 async function saveItem(moveNext){
   if(!curBag){toast('Bag nahi khula');return;}
   if(!validateEntry())return;
+  if(window._saving)return;window._saving=true;$('saveBtn').disabled=true; /* #5 prevent duplicate submit */
   const name=$('ieItem').value.trim();const qty=parseQty($('ieQty').value);const mrp=parseFloat($('ieMrp').value||0);
   const row=audit({bag_id:curBag.id,master_id:pickedMaster?pickedMaster.id:null,brand_id:pickedMaster?pickedMaster.brand_id:null,brand_name:pickedMaster?brandName(pickedMaster.brand_id):null,
     item_name:name,is_free_text:!pickedMaster,unit:'pcs',qty:qty,mrp:mrp,reason:(curSrc==='WAREHOUSE_DAMAGE'?($('ieReason').value||null):null),
@@ -351,9 +348,12 @@ async function saveItem(moveNext){
     replacement_warehouse_id:$('ieRepl').checked?($('ieReplWh').value||null):null,replacement_qty:$('ieRepl').checked?parseFloat($('ieReplQty').value||0)||null:null,
     entry_method:window._lastEntry||'manual'});
   const {data,error}=await sb.from('mr_items').insert(row).select().single();
-  if(error){toast('Error: '+error.message);return;}
+  if(error){window._saving=false;toast('Error: '+error.message);return;}
   curItems.unshift(data);pushRecent({item_name:name,mrp:mrp,master:pickedMaster});
+  /* #4 last-MRP memory: master ka MRP latest pe update (override yaad rahe) */
+  if(pickedMaster&&mrp>0&&Number(mrp)!==Number(pickedMaster.mrp)){sb.from('mr_item_master').update({mrp:mrp,updated_by_user_id:U.user_id,updated_by_name:U.user_name,updated_at:nowISO()}).eq('id',pickedMaster.id).then(()=>{});}
   logAct('ADD_ITEM','item',data.id,'Added '+name+' x'+qty);window._lastEntry='manual';
+  window._saving=false;
   clearRow();renderItems();if(moveNext)$('ieItem').focus();
   toast('✓ '+name+' add hua · Items: '+curItems.length+' · Total '+money(curItems.reduce((a,i)=>a+Number(i.amount||0),0)));
 }
@@ -442,11 +442,11 @@ async function uploadPhotos(files){if(!curBag){toast('Bag nahi khula');return;}
     if(error)throw error;curPhotos.push(data);logAct('UPLOAD_PHOTO','photo',data.id,'Photo');done++;
   }catch(e){toast('Photo error ('+f.name+'): '+(e.message||e));}}
   renderThumbs();$('phInput').value='';if(done)toast(done+' photo upload ✓');}
-function renderThumbs(){$('thumbs').innerHTML=curPhotos.map(p=>`<span style="position:relative;display:inline-block;margin:2px"><img src="${esc(p.public_url)}"><button class="btn btn-sm btn-red" style="position:absolute;top:2px;right:2px;padding:2px 6px" onclick="delPhoto('${p.id}')">✕</button></span>`).join('')||'<div class="muted">Abhi koi photo nahi — close ke liye kam se kam 1 zaroori.</div>';}
+function renderThumbs(){$('thumbs').innerHTML=curPhotos.map(p=>`<span style="position:relative;display:inline-block;margin:2px"><img src="${esc(p.public_url)}"><button class="btn btn-sm btn-red" style="position:absolute;top:2px;right:2px;padding:2px 6px" onclick="delPhoto('${p.id}')">✕</button></span>`).join('')||'<div class="muted">Photo optional — high-value/leakage/expiry ke liye add karein.</div>';}
 async function delPhoto(id){const p=curPhotos.find(x=>x.id===id);if(!p)return;
   try{await sb.from('mr_bag_photos').update({is_deleted:true}).eq('id',id);}catch(_){}
   curPhotos=curPhotos.filter(x=>x.id!==id);renderThumbs();toast('Photo hata di');}
-async function closeBag(){if(!curBag)return;if(curItems.length===0){toast('Bag khaali hai');return;}if(curPhotos.length===0){toast('Kam se kam 1 photo zaroori');return;}
+async function closeBag(){if(!curBag)return;if(curItems.length===0){toast('Bag khaali hai');return;}
   if(!confirm('Bag close karein? Items + photos lock ho jayenge.'))return;
   const {data:upd,error}=await sb.from('mr_bags').update({status:'CLOSED',closed_by_user_id:U.user_id,closed_by_name:U.user_name,closed_at:nowISO(),updated_at:nowISO()}).eq('id',curBag.id).eq('status',curBag.status).select();
   if(error){toast(error.message);return;}
