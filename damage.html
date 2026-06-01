@@ -105,18 +105,19 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
       <label>Retailer (optional)</label><input id="seRetailer" placeholder="Naam (optional)">
       <div class="row" style="margin-top:12px">
         <button class="btn btn-cyan" onclick="startBag('OPEN')">Start Bag →</button>
-        <button class="btn" style="flex:0 0 auto" onclick="startBag('TEST')">🧪 Test</button>
+        <button class="btn tab-owner hide" style="flex:0 0 auto" onclick="startBag('TEST')">🧪 Test</button>
       </div>
     </div>
     <div id="bagActive" class="hide">
       <div class="card" style="display:flex;align-items:center;gap:10px">
         <div><div style="font-weight:800;font-size:18px" id="abNo">BAG-—</div><div class="muted" id="abMeta">—</div></div>
-        <span class="pill p-open" id="abStatus" style="margin-left:auto">OPEN</span>
+        <button class="btn btn-sm" style="margin-left:auto;flex:0 0 auto" onclick="switchTab('bags')">← Bags</button>
+        <span class="pill p-open" id="abStatus">OPEN</span>
       </div>
       <div class="card">
         <h3>Add Item (fast)</h3>
         <label>Item <span class="muted" style="text-transform:none">— type to search (brand+MRP auto)</span></label>
-        <input id="ieItem" placeholder="Item naam" autocomplete="off" oninput="erpSuggest(this.value)">
+        <input id="ieItem" placeholder="Item naam" autocomplete="off" oninput="erpSuggest(this.value)" onfocus="setTimeout(()=>this.scrollIntoView({block:'center',behavior:'smooth'}),300)">
         <div id="vstat" class="vstat"></div>
         <div id="sugg" class="list" style="margin-top:6px"></div>
         <div id="recent" class="chips"></div>
@@ -129,7 +130,7 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
           <div style="flex:1.3"><label>Qty <span class="muted" style="text-transform:none">(1+9=10)</span></label>
             <div class="qtybar"><button class="btn qbtn" onclick="bumpQty(-1)">−</button>
             <input id="ieQty" inputmode="text" value="1" oninput="validateEntry()"><button class="btn qbtn" onclick="bumpQty(1)">＋</button></div></div>
-          <div><label>MRP ₹ *</label><input id="ieMrp" type="number" inputmode="decimal" value="" placeholder="0" oninput="validateEntry()">
+          <div><label>MRP ₹ *</label><input id="ieMrp" type="number" inputmode="decimal" value="" placeholder="0" oninput="validateEntry()" onfocus="setTimeout(()=>this.scrollIntoView({block:'center',behavior:'smooth'}),300)">
             <div class="amt" id="ieAmt">Amount ₹0.00</div></div>
         </div>
         <label style="display:flex;align-items:center;gap:8px;text-transform:none;font-size:13px;color:var(--txt)">
@@ -139,7 +140,7 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
           <label>Warehouse</label><select id="ieReplWh"></select>
         </div>
         <div class="err" id="ieErr"></div>
-        <button class="btn btn-grn btn-block" id="saveBtn" style="margin-top:6px" onclick="saveItem(true)" disabled>Save &amp; Next ⏎</button>
+        <button class="btn btn-grn btn-block" id="saveBtn" style="margin-top:6px;position:sticky;bottom:8px;z-index:6" onclick="saveItem(true)" disabled>Save &amp; Next ⏎</button>
       </div>
       <div class="card">
         <h3>Is bag ke items</h3>
@@ -147,7 +148,7 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
         <div id="bagItems" class="list" style="margin-top:10px"></div>
       </div>
       <div class="card">
-        <h3>Photos (close ke liye zaroori)</h3>
+        <h3>Photos (optional — high-value / leakage / expiry / company proof ke liye)</h3>
         <input type="file" id="phInput" accept="image/*" capture="environment" multiple onchange="uploadPhotos(this.files)">
         <div id="thumbs" class="thumbs"></div>
         <button class="btn btn-cyan btn-block" style="margin-top:14px" onclick="closeBag()">Close Bag + PDF 🏷️</button>
@@ -199,6 +200,7 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
 <div id="ov" class="ov"><div class="sheet" id="sheet"></div></div>
 <div id="toast" class="toast"></div>
 <script>
+/* ===== PRODUCTION BUILD — Vijay ERP production ===== */
 const SUPA_URL='https://vbprpviyhyqllmaodejz.supabase.co';
 const SUPA_KEY='sb_publishable_7E5EVnRSIeQ4w2oxtmzutQ_YVGsLydc';
 const BUCKET='mr-bag-photos';
@@ -306,7 +308,7 @@ function erpSuggest(q){pickedMaster=null;$('ieBrandView').value='';clearTimeout(
     if(!rows.length){let qq=sb.from('mr_item_master').select('*').eq('is_deleted',false).eq('is_active',true).ilike('item_name','%'+q+'%').limit(8);
       if(cid)qq=qq.eq('company_id',cid);const {data}=await qq;rows=data||[];}
     let html=rows.map(r=>`<div class="it" style="cursor:pointer" onclick='pickMaster(${esc(JSON.stringify(r))})'><div class="nm"><b>${esc(r.item_name)}</b><small>${esc(brandName(r.brand_id))}${r.mrp?(' · ₹'+r.mrp):''}${r.is_approved?'':' · ⏳'}</small></div></div>`).join('');
-    html+=`<div class="it" style="cursor:pointer;border-color:var(--cyan)" onclick="newItem()"><div class="nm"><b style="color:var(--cyan)">＋ Naya item add karo</b><small>"${esc(q)}" master mein nahi mila</small></div></div>`;
+    if(rows.length===0){ html+=`<div class="it" style="cursor:pointer;border-color:var(--cyan)" onclick="newItem()"><div class="nm"><b style="color:var(--cyan)">＋ Naya item add karo</b><small>"${esc(q)}" master mein nahi mila</small></div></div>`; }
     $('sugg').innerHTML=html;
   }catch(e){$('sugg').innerHTML='';}},220);}
 function brandName(id){return (brands.find(b=>b.id===id)||{}).name||'';}
@@ -314,15 +316,15 @@ function pickMaster(r){pickedMaster=r;$('ieItem').value=r.item_name;$('ieBrandVi
 async function newItem(){
   if(!curBag){toast('Bag nahi khula');return;}
   const name=($('ieItem').value||'').trim();if(!name){toast('Item naam likho');return;}
-  const cid=curBag.company_id;const cbs=brands.filter(b=>b.company_id===cid);
-  const bopts=cbs.map((b,i)=>(i+1)+'. '+b.name).join('\n');
-  const bsel=prompt('Brand chuno (number) ya naya brand naam likho:\n'+bopts);if(bsel===null)return;
-  let brand_id=null;const n=parseInt(bsel,10);
-  if(n>=1&&n<=cbs.length)brand_id=cbs[n-1].id;
-  else{const bn=bsel.trim();if(bn){const {data:bd,error:be}=await sb.from('mr_brands').insert(audit({company_id:cid,name:bn})).select().single();if(be){toast(be.message);return;}brands.push(bd);brand_id=bd.id;}}
-  const mrp=parseFloat(prompt('MRP ₹ (>0):')||'0');if(!(mrp>0)){toast('MRP > 0 zaroori');return;}
-  const barcode=(prompt('Barcode (optional):')||'').trim()||null;
-  const row=audit({company_id:cid,brand_id:brand_id,item_name:name,normalized_name:norm(name),mrp:mrp,barcode:barcode,is_approved:(role==='OWNER')});
+  /* DUPLICATE/TYPO GUARD (issue #2,#9): close matches dikhao, confirm lo */
+  try{const rp=await sb.rpc('mr_search_items',{p_company:curBag.company_id,p_q:name});const mm=(rp&&rp.data)||[];
+    if(mm.length){const list=mm.slice(0,5).map(x=>'• '+x.item_name+(x.mrp?(' (Rs '+x.mrp+')'):'')).join('\n');
+      if(!confirm('Milte-julte items pehle se hain:\n\n'+list+'\n\nInme se koi NAHI hai?\nOK = naya item banao\nCancel = upar list se sahi item chuno')){$('sugg').scrollIntoView({behavior:'smooth'});return;}}
+  }catch(_){}
+  const cid=curBag.company_id;
+  /* manual brand creation OFF (#4): naya item -> brand null; owner approve/merge mein assign karega */
+  const mrp=parseFloat(prompt('MRP Rs (>0) — required:')||'0');if(!(mrp>0)){toast('MRP > 0 zaroori');return;}
+  const row=audit({company_id:cid,brand_id:null,item_name:name,normalized_name:norm(name),mrp:mrp,barcode:null,is_approved:(role==='OWNER')});
   const {data,error}=await sb.from('mr_item_master').insert(row).select().single();
   if(error){toast('Master error: '+error.message);return;}
   logAct('ADD_ITEM_MASTER','item_master',data.id,'New master '+name);pickMaster(data);toast('Item saved ✓'+(data.is_approved?'':' (approval pending)'));
@@ -338,6 +340,7 @@ function clearRow(){$('ieItem').value='';$('ieBrandView').value='';$('ieQty').va
 async function saveItem(moveNext){
   if(!curBag){toast('Bag nahi khula');return;}
   if(!validateEntry())return;
+  if(window._saving)return;window._saving=true;$('saveBtn').disabled=true; /* #5 prevent duplicate submit */
   const name=$('ieItem').value.trim();const qty=parseQty($('ieQty').value);const mrp=parseFloat($('ieMrp').value||0);
   const row=audit({bag_id:curBag.id,master_id:pickedMaster?pickedMaster.id:null,brand_id:pickedMaster?pickedMaster.brand_id:null,brand_name:pickedMaster?brandName(pickedMaster.brand_id):null,
     item_name:name,is_free_text:!pickedMaster,unit:'pcs',qty:qty,mrp:mrp,reason:(curSrc==='WAREHOUSE_DAMAGE'?($('ieReason').value||null):null),
@@ -345,32 +348,53 @@ async function saveItem(moveNext){
     replacement_warehouse_id:$('ieRepl').checked?($('ieReplWh').value||null):null,replacement_qty:$('ieRepl').checked?parseFloat($('ieReplQty').value||0)||null:null,
     entry_method:window._lastEntry||'manual'});
   const {data,error}=await sb.from('mr_items').insert(row).select().single();
-  if(error){toast('Error: '+error.message);return;}
+  if(error){window._saving=false;toast('Error: '+error.message);return;}
   curItems.unshift(data);pushRecent({item_name:name,mrp:mrp,master:pickedMaster});
+  /* #4 last-MRP memory: master ka MRP latest pe update (override yaad rahe) */
+  if(pickedMaster&&mrp>0&&Number(mrp)!==Number(pickedMaster.mrp)){sb.from('mr_item_master').update({mrp:mrp,updated_by_user_id:U.user_id,updated_by_name:U.user_name,updated_at:nowISO()}).eq('id',pickedMaster.id).then(()=>{});}
   logAct('ADD_ITEM','item',data.id,'Added '+name+' x'+qty);window._lastEntry='manual';
-  clearRow();renderItems();if(moveNext)$('ieItem').focus();toast('Saved ✓'+(moveNext?' next…':''));
+  window._saving=false;
+  clearRow();renderItems();if(moveNext)$('ieItem').focus();
+  toast('✓ '+name+' add hua · Items: '+curItems.length+' · Total '+money(curItems.reduce((a,i)=>a+Number(i.amount||0),0)));
 }
 ['ieItem','ieQty','ieMrp'].forEach(id=>{const el=$(id);el&&el.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();if(e.ctrlKey||e.metaKey)saveItem(false);else saveItem(true);}else if(e.key==='Escape'){e.preventDefault();clearRow();}});});
 function pushRecent(o){recentList=recentList.filter(r=>r.item_name.toLowerCase()!==o.item_name.toLowerCase());recentList.unshift(o);recentList=recentList.slice(0,10);renderRecent();}
 function renderRecent(){$('recent').innerHTML=recentList.map((r,i)=>`<span class="chip" onclick="applyRecent(${i})">${esc(r.item_name)}${r.mrp?(' ₹'+r.mrp):''}</span>`).join('');}
 function applyRecent(i){const r=recentList[i];if(!r)return;if(r.master)pickMaster(r.master);else{$('ieItem').value=r.item_name;if(r.mrp)$('ieMrp').value=r.mrp;}validateEntry();$('ieQty').focus();}
+let editingId=null;
 function renderItems(){
   $('sCount').textContent=curItems.length;$('sQty').textContent=curItems.reduce((a,i)=>a+Number(i.qty||0),0);$('sVal').textContent=money(curItems.reduce((a,i)=>a+Number(i.amount||0),0));
-  $('bagItems').innerHTML=curItems.map(i=>`<div class="it"><div class="nm"><b>${esc(i.item_name)}</b><small>${esc(i.brand_name||'')}${i.replacement_given?' · 🔁':''}${i.reason?' · '+esc(i.reason):''}</small></div>
+  $('bagItems').innerHTML=curItems.map(i=>{
+    if(i.id===editingId){
+      return `<div class="it" style="flex-direction:column;align-items:stretch;gap:6px">
+        <b>${esc(i.item_name)} <small class="muted" style="text-transform:none">(naam edit nahi hota — Owner se)</small></b>
+        <div class="row"><div style="flex:1.3"><label>Qty</label><div class="qtybar"><button class="btn qbtn" onclick="edBump('${i.id}',-1)">−</button>
+          <input id="edQty_${i.id}" inputmode="decimal" value="${i.qty}"><button class="btn qbtn" onclick="edBump('${i.id}',1)">＋</button></div></div>
+          <div><label>MRP ₹</label><input id="edMrp_${i.id}" type="number" inputmode="decimal" value="${i.mrp}"></div></div>
+        <div class="row"><button class="btn btn-grn btn-sm" onclick="saveItemEdit('${i.id}')">Save ✓</button>
+          <button class="btn btn-sm" onclick="cancelEdit()">Cancel</button></div></div>`;
+    }
+    return `<div class="it"><div class="nm"><b>${esc(i.item_name)}</b><small>${esc(i.brand_name||'')}${i.replacement_given?' · 🔁':''}${i.reason?' · '+esc(i.reason):''}</small></div>
     <div class="q">${i.qty} × ${money(i.mrp)}<br>${money(i.amount)}</div>
-    <button class="btn btn-sm" onclick="editItem('${i.id}')">✎</button><button class="btn btn-sm btn-red" onclick="delItem('${i.id}')">✕</button></div>`).join('')||'<div class="muted">Abhi koi item nahi.</div>';
+    <button class="btn btn-sm" onclick="editItem('${i.id}')">✎</button>${role==='STAFF'?'':`<button class="btn btn-sm btn-red" onclick="delItem('${i.id}')">✕</button>`}</div>`;
+  }).join('')||'<div class="muted">Abhi koi item nahi.</div>';
 }
-async function editItem(id){const it=curItems.find(x=>x.id===id);if(!it)return;
-  const nq=parseQty(prompt('Nayi Qty:',it.qty));if(!(nq>0)){toast('Qty galat');return;}
-  const nm=parseFloat(prompt('Naya MRP:',it.mrp));if(!(nm>0)){toast('MRP galat');return;}
+function edBump(id,d){const el=$('edQty_'+id);if(!el)return;let v=parseQty(el.value)+d;if(v<0)v=0;el.value=v;}
+function cancelEdit(){editingId=null;renderItems();}
+function editItem(id){const it=curItems.find(x=>x.id===id);if(!it)return;
+  if(curBag&&curBag.status!=='OPEN'&&curBag.status!=='TEST'){toast('Closed bag edit nahi hota — Manager se reopen karwao');return;}
+  editingId=id;renderItems();const q=$('edQty_'+id);if(q){q.focus();}}
+async function saveItemEdit(id){const it=curItems.find(x=>x.id===id);if(!it)return;
+  const nq=parseQty(($('edQty_'+id)||{}).value);const nm=parseFloat(($('edMrp_'+id)||{}).value);
+  if(!(nq>0)){toast('Qty > 0 chahiye');return;}if(!(nm>0)){toast('MRP > 0 chahiye');return;}
   // CONFLICT CHECK: kisi aur ne to nahi badla?
   const {data:fresh}=await sb.from('mr_items').select('qty,mrp,is_deleted').eq('id',id).single();
-  if(!fresh||fresh.is_deleted){toast('⚠️ Item ab maujood nahi — refresh');await reloadBagItems();return;}
-  if(Number(fresh.qty)!==Number(it.qty)||Number(fresh.mrp)!==Number(it.mrp)){toast('⚠️ Kisi aur ne ise badla — refresh ho raha');await reloadBagItems();return;}
+  if(!fresh||fresh.is_deleted){toast('⚠️ Item ab maujood nahi — refresh');editingId=null;await reloadBagItems();return;}
+  if(Number(fresh.qty)!==Number(it.qty)||Number(fresh.mrp)!==Number(it.mrp)){toast('⚠️ Kisi aur ne ise badla — refresh ho raha');editingId=null;await reloadBagItems();return;}
   const {data,error}=await sb.from('mr_items').update({qty:nq,mrp:nm,updated_by_user_id:U.user_id,updated_by_name:U.user_name,updated_at:nowISO()}).eq('id',id).select().single();
   if(error){toast(error.message);return;}
   logAct('EDIT_ITEM','item',id,'Edited '+it.item_name,{qty:{old:it.qty,new:nq},mrp:{old:it.mrp,new:nm}});
-  const idx=curItems.findIndex(x=>x.id===id);curItems[idx]=data;renderItems();toast('Updated ✓');}
+  const idx=curItems.findIndex(x=>x.id===id);curItems[idx]=data;editingId=null;renderItems();toast('Item update ho gaya ✓');}
 async function reloadBagItems(){if(!curBag)return;const {data}=await sb.from('mr_items').select('*').eq('bag_id',curBag.id).eq('is_deleted',false).order('created_at',{ascending:false});curItems=data||[];renderItems();}
 async function delItem(id){if(role==='STAFF'){toast('Staff delete nahi kar sakta');return;}
   const reason=prompt('Delete reason (zaroori):');if(!reason||!reason.trim()){toast('Reason zaroori');return;}
@@ -397,32 +421,55 @@ async function scanBarcode(){if(!('BarcodeDetector' in window)){toast('Barcode s
 async function barcodeLookup(code){try{const cid=curBag?curBag.company_id:null;let qq=sb.from('mr_item_master').select('*').eq('barcode',code).limit(1);if(cid)qq=qq.eq('company_id',cid);
   const {data}=await qq;if(data&&data.length){pickMaster(data[0]);return;}}catch(_){}
   $('ieItem').value=$('ieItem').value||('Barcode '+code);validateEntry();$('ieQty').focus();}
+function compressImage(file){return new Promise((resolve)=>{try{
+  if(!/^image\//.test(file.type)){resolve(null);return;}
+  const img=new Image();const url=URL.createObjectURL(file);
+  img.onload=()=>{const max=1600;let w=img.width,h=img.height;if(w>max||h>max){const r=Math.min(max/w,max/h);w=Math.round(w*r);h=Math.round(h*r);}
+    const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0,w,h);
+    c.toBlob(b=>{URL.revokeObjectURL(url);resolve(b&&b.size<file.size?b:file);},'image/jpeg',0.7);};
+  img.onerror=()=>{URL.revokeObjectURL(url);resolve(file);};img.src=url;
+}catch(_){resolve(file);}});}
 async function uploadPhotos(files){if(!curBag){toast('Bag nahi khula');return;}
-  for(const f of files){try{const path=curBag.bag_no+'/'+Date.now()+'_'+f.name.replace(/[^\w.\-]/g,'_');
-    const up=await sb.storage.from(BUCKET).upload(path,f,{upsert:false});if(up.error)throw up.error;
+  const arr=Array.from(files);let done=0;
+  for(const f of arr){try{
+    if(!/^image\//.test(f.type)){toast('Sirf photo (image) chalega: '+f.name);continue;}
+    toast('Photo upload ho rahi… ('+(done+1)+'/'+arr.length+')');
+    const blob=(await compressImage(f))||f;
+    const path=curBag.bag_no+'/'+Date.now()+'_'+f.name.replace(/[^\w.\-]/g,'_').replace(/\.[^.]+$/,'')+'.jpg';
+    const up=await sb.storage.from(BUCKET).upload(path,blob,{upsert:false,contentType:'image/jpeg'});if(up.error)throw up.error;
     const pub=sb.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
-    const {data,error}=await sb.from('mr_bag_photos').insert({bag_id:curBag.id,storage_path:path,public_url:pub,file_name:f.name,mime_type:f.type,size_bytes:f.size,uploaded_by_user_id:U.user_id,uploaded_by_name:U.user_name,uploaded_device:deviceName}).select().single();
-    if(error)throw error;curPhotos.push(data);logAct('UPLOAD_PHOTO','photo',data.id,'Photo');}catch(e){toast('Photo error: '+(e.message||e));}}
-  renderThumbs();$('phInput').value='';}
-function renderThumbs(){$('thumbs').innerHTML=curPhotos.map(p=>`<img src="${esc(p.public_url)}">`).join('');}
-async function closeBag(){if(!curBag)return;if(curItems.length===0){toast('Bag khaali hai');return;}if(curPhotos.length===0){toast('Kam se kam 1 photo zaroori');return;}
+    const {data,error}=await sb.from('mr_bag_photos').insert({bag_id:curBag.id,storage_path:path,public_url:pub,file_name:f.name,mime_type:'image/jpeg',size_bytes:blob.size,uploaded_by_user_id:U.user_id,uploaded_by_name:U.user_name,uploaded_device:deviceName}).select().single();
+    if(error)throw error;curPhotos.push(data);logAct('UPLOAD_PHOTO','photo',data.id,'Photo');done++;
+  }catch(e){toast('Photo error ('+f.name+'): '+(e.message||e));}}
+  renderThumbs();$('phInput').value='';if(done)toast(done+' photo upload ✓');}
+function renderThumbs(){$('thumbs').innerHTML=curPhotos.map(p=>`<span style="position:relative;display:inline-block;margin:2px"><img src="${esc(p.public_url)}"><button class="btn btn-sm btn-red" style="position:absolute;top:2px;right:2px;padding:2px 6px" onclick="delPhoto('${p.id}')">✕</button></span>`).join('')||'<div class="muted">Photo optional — high-value/leakage/expiry ke liye add karein.</div>';}
+async function delPhoto(id){const p=curPhotos.find(x=>x.id===id);if(!p)return;
+  try{await sb.from('mr_bag_photos').update({is_deleted:true}).eq('id',id);}catch(_){}
+  curPhotos=curPhotos.filter(x=>x.id!==id);renderThumbs();toast('Photo hata di');}
+async function closeBag(){if(!curBag)return;if(curItems.length===0){toast('Bag khaali hai');return;}
   if(!confirm('Bag close karein? Items + photos lock ho jayenge.'))return;
   const {data:upd,error}=await sb.from('mr_bags').update({status:'CLOSED',closed_by_user_id:U.user_id,closed_by_name:U.user_name,closed_at:nowISO(),updated_at:nowISO()}).eq('id',curBag.id).eq('status',curBag.status).select();
   if(error){toast(error.message);return;}
   if(!upd||!upd.length){toast('⚠️ Bag ka status kisi aur ne badal diya — Bags se dobara kholo');return;}
   logAct('CLOSE_BAG','bag',curBag.id,'Closed '+curBag.bag_no);await makePDF(curBag,curItems);toast('Bag closed ✓');
   curBag=null;curItems=[];curPhotos=[];$('bagActive').classList.add('hide');$('bagSetup').classList.remove('hide');}
-async function makePDF(bag,items){try{const {jsPDF}=window.jspdf;const doc=new jsPDF({unit:'mm',format:'a5'});
+async function makePDF(bag,items){try{
+  if(!window.jspdf||!window.jspdf.jsPDF){toast('PDF library load nahi hui — net check karke dobara try karo');return;}
+  const {jsPDF}=window.jspdf;const doc=new jsPDF({unit:'mm',format:'a5'});
   const co=(companies.find(c=>c.id===bag.company_id)||{}).name||'';const tQ=items.reduce((a,i)=>a+Number(i.qty||0),0),tV=items.reduce((a,i)=>a+Number(i.amount||0),0);
   doc.setFontSize(16);doc.text('DAMAGE BAG LABEL',10,13);doc.setFontSize(20);doc.setTextColor(0,150,170);doc.text(String(bag.bag_no),10,23);doc.setTextColor(0,0,0);
   doc.setFontSize(10);doc.text('Company: '+co,10,32);doc.text('Source: '+bag.source_type.replace('_',' '),10,38);doc.text('Date: '+new Date().toLocaleString('en-IN'),10,44);doc.text('Total Qty: '+tQ,10,50);doc.text('Total Value: Rs '+tV.toFixed(2),10,56);
-  const qr=await QRCode.toDataURL(location.origin+location.pathname+'?bag='+encodeURIComponent(bag.bag_no),{width:240,margin:1});
-  doc.addImage(qr,'PNG',98,28,38,38);doc.setFontSize(7);doc.text('Scan = bag details',100,69);
-  doc.autoTable({startY:62,head:[['Item','Qty','MRP','Amt']],body:items.map(i=>[i.item_name,i.qty,i.mrp,i.amount]),styles:{fontSize:7},headStyles:{fillColor:[20,30,50]}});
-  doc.save(bag.bag_no+'.pdf');}catch(e){toast('PDF error: '+(e.message||e));}}
+  /* QR is OPTIONAL — never let it break the PDF (issue #4) */
+  try{if(typeof QRCode!=='undefined'&&QRCode.toDataURL){const qr=await QRCode.toDataURL(location.origin+location.pathname+'?bag='+encodeURIComponent(bag.bag_no),{width:240,margin:1});doc.addImage(qr,'PNG',98,28,38,38);doc.setFontSize(7);doc.text('Scan = bag details',100,69);}}catch(qe){console.warn('QR skipped, PDF continues',qe);}
+  /* table also fail-safe -> fallback to plain lines */
+  try{doc.autoTable({startY:62,head:[['Item','Qty','MRP','Amt']],body:items.map(i=>[i.item_name,i.qty,i.mrp,i.amount]),styles:{fontSize:7},headStyles:{fillColor:[20,30,50]}});}
+  catch(te){let y=66;doc.setFontSize(8);items.forEach(i=>{doc.text(String(i.item_name+' — '+i.qty+' x '+i.mrp+' = '+i.amount).slice(0,60),10,y);y+=5;});}
+  doc.save(bag.bag_no+'.pdf');
+}catch(e){toast('PDF error: '+(e.message||e));}}
 function pillCls(s){return {OPEN:'p-open',CLOSED:'p-closed',TEST:'p-test',APPROVED:'p-approved',DELETED:'p-deleted'}[s]||'p-closed';}
 async function loadBags(){
   let q=sb.from('mr_bags').select('*').neq('status','DELETED').order('created_at',{ascending:false}).limit(100);
+  if(role==='STAFF')q=q.neq('status','TEST'); /* issue #3: staff sees only OPEN/CLOSED/APPROVED */
   if($('fSource').value)q=q.eq('source_type',$('fSource').value);if($('fStatus').value)q=q.eq('status',$('fStatus').value);
   const bn=$('fBagNo')&&$('fBagNo').value.trim();if(bn)q=q.ilike('bag_no','%'+bn+'%');
   const {data,error}=await q;if(error){toast(error.message);return;}
@@ -452,6 +499,7 @@ async function openBag(id){
       ${cA?`<button class="btn btn-sm btn-grn" onclick="approveBag('${b.id}','${esc(b.bag_no)}')">✅ Approve (lock)</button>`:''}
       ${cD?`<button class="btn btn-sm btn-red" onclick="deleteBag('${b.id}','${esc(b.bag_no)}')">Delete</button>`:''}</div>
     ${isA?'<p class="muted" style="margin-top:8px">🔒 APPROVED — permanently locked.</p>':''}
+    ${(role==='STAFF'&&b.status==='CLOSED')?'<p class="muted" style="margin-top:8px">🔒 Closed — edit/reopen ke liye Manager/Owner se kaho.</p>':''}
     <p class="muted" style="margin-top:8px">Created: ${esc(b.created_by_name||'')} · ${new Date(b.created_at).toLocaleString('en-IN')}${b.closed_by_name?'<br>Closed: '+esc(b.closed_by_name):''}${b.reopened_by_name?'<br>Reopened: '+esc(b.reopened_by_name)+' ('+esc(b.reopen_reason||'')+')':''}${b.approved_by_name?'<br>Approved: '+esc(b.approved_by_name):''}</p>`;
   $('ov').classList.add('show');
 }
