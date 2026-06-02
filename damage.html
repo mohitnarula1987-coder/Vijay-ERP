@@ -464,7 +464,7 @@ async function makePDF(bag,items){try{
   /* QR is OPTIONAL — never let it break the PDF (issue #4) */
   try{if(typeof QRCode!=='undefined'&&QRCode.toDataURL){const qr=await QRCode.toDataURL(location.origin+location.pathname+'?bag='+encodeURIComponent(bag.bag_no),{width:240,margin:1});doc.addImage(qr,'PNG',98,28,38,38);doc.setFontSize(7);doc.text('Scan = bag details',100,69);}}catch(qe){console.warn('QR skipped, PDF continues',qe);}
   /* table also fail-safe -> fallback to plain lines */
-  try{doc.autoTable({startY:62,head:[['Item','Qty','MRP','Amt']],body:items.map(i=>[i.item_name,i.qty,i.mrp,i.amount]),styles:{fontSize:7},headStyles:{fillColor:[20,30,50]}});}
+  try{doc.autoTable({startY:62,head:[['Item','Qty','MRP','Amt']],body:(()=>{const m={};items.forEach(i=>{const k=i.item_name+'|||'+i.mrp;if(!m[k])m[k]={n:i.item_name,q:0,r:i.mrp,a:0};m[k].q+=Number(i.qty||0);m[k].a+=Number(i.amount||0);});return Object.values(m).map(x=>[x.n,x.q,x.r,x.a]);})(),styles:{fontSize:7},headStyles:{fillColor:[20,30,50]}});}
   catch(te){let y=66;doc.setFontSize(8);items.forEach(i=>{doc.text(String(i.item_name+' — '+i.qty+' x '+i.mrp+' = '+i.amount).slice(0,60),10,y);y+=5;});}
   doc.save(bag.bag_no+'.pdf');
 }catch(e){toast('PDF error: '+(e.message||e));}}
