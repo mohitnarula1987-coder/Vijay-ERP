@@ -313,7 +313,7 @@ function erpSuggest(q){pickedMaster=null;$('ieBrandView').value='';clearTimeout(
     $('sugg').innerHTML=html;
   }catch(e){$('sugg').innerHTML='';}},220);}
 function brandName(id){return (brands.find(b=>b.id===id)||{}).name||'';}
-function pickMaster(r){pickedMaster=r;$('ieItem').value=r.item_name;$('ieBrandView').value=brandName(r.brand_id);if(r.mrp)$('ieMrp').value=r.mrp;$('sugg').innerHTML='';validateEntry();$('ieQty').focus();}
+function pickMaster(r){pickedMaster=r;$('ieItem').value=r.item_name;let bn=brandName(r.brand_id);if(!bn){const nm=r.item_name.toLowerCase();const infer=brands.find(b=>b.name&&nm.includes(b.name.toLowerCase()));if(infer){pickedMaster=Object.assign({},r,{brand_id:infer.id});bn=infer.name;sb.from('mr_item_master').update({brand_id:infer.id}).eq('id',r.id).then(()=>{});}}$('ieBrandView').value=bn;if(r.mrp)$('ieMrp').value=r.mrp;$('sugg').innerHTML='';validateEntry();$('ieQty').focus();}
 async function newItem(){
   if(!curBag){toast('Bag nahi khula');return;}
   const name=($('ieItem').value||'').trim();if(!name){toast('Item naam likho');return;}
@@ -326,7 +326,7 @@ async function newItem(){
   /* manual brand creation OFF (#4): naya item -> brand null; owner approve/merge mein assign karega */
   const mrp=parseFloat(prompt('MRP Rs (>0) — required:')||'0');if(!(mrp>0)){toast('MRP > 0 zaroori');return;}
   const brandOpts=brands.filter(b=>b.company_id===cid);let selBrandId=null;if(brandOpts.length>0){const bList=brandOpts.map((b,i)=>(i+1)+'. '+b.name).join('\n');const bChoice=prompt('Brand chuno:\n'+bList+'\n0. Baad mein');const bIdx=parseInt(bChoice||'0',10);if(bIdx>0&&bIdx<=brandOpts.length)selBrandId=brandOpts[bIdx-1].id;}
-  const row=audit({company_id:cid,brand_id:null,item_name:name,normalized_name:norm(name),mrp:mrp,barcode:null,is_approved:(role==='OWNER')});
+  const row=audit({company_id:cid,brand_id:selBrandId,item_name:name,normalized_name:norm(name),mrp:mrp,barcode:null,is_approved:(role==='OWNER')});
   const {data,error}=await sb.from('mr_item_master').insert(row).select().single();
   if(error){toast('Master error: '+error.message);return;}
   logAct('ADD_ITEM_MASTER','item_master',data.id,'New master '+name);pickMaster(data);toast('Item saved ✓'+(data.is_approved?'':' (approval pending)'));
@@ -541,7 +541,7 @@ async function report(kind){
   try{
     if(kind==='company'){const {data}=await sb.from('v_mr_company_claim').select('*');head=['Company','Bags','Claimed','Settled','Variance'];rows=(data||[]).map(r=>[r.company,r.bags,r.claimed_value,r.settled_value,r.variance]);const tb=rows.reduce((a,r)=>a+Number(r[1]||0),0);const tc=rows.reduce((a,r)=>a+Number(r[2]||0),0);const ts=rows.reduce((a,r)=>a+Number(r[3]||0),0);rows.push(['GRAND TOTAL',tb,Number(tc).toFixed(2),Number(ts).toFixed(2),Number(tc-ts).toFixed(2)]);}
     else if(kind==='brand'){const {data}=await sb.from('v_mr_brand_damage').select('*');head=['Company','Brand','Qty','Value'];rows=(data||[]).map(r=>[r.company,r.brand||'—',r.qty,r.value]);const tq=rows.reduce((a,r)=>a+Number(r[2]||0),0);const tv=rows.reduce((a,r)=>a+Number(r[3]||0),0);rows.push(['','GRAND TOTAL',tq,Number(tv).toFixed(2)]);}
-    else if(kind==='item'){const {data}=await sb.from('v_mr_item_damage').select('*').order('value',{ascending:false}).limit(500);head=['Company','Brand','Item','MRP','Qty','Value'];rows=(data||[]).map(r=>[r.company,r.brand||'—',r.item_name,r.mrp||'—',r.qty,r.value]);const tq=rows.reduce((a,r)=>a+Number(r[4]||0),0);const tv=rows.reduce((a,r)=>a+Number(r[5]||0),0);rows.push(['','','','TOTAL',tq,Number(tv).toFixed(2)]);}
+    else if(kind==='item'){const {data}=await sb.from('v_mr_item_damage').select('*').order('value',{ascending:false}).limit(500);const normStr=s=>(s||'').toLowerCase().trim().replace(/\s+/g,' ').replace(/elachi/g,'elaichi');const merged={};(data||[]).forEach(r=>{const k=(r.company||'')+'|'+(r.brand||'')+'|'+normStr(r.item_name)+'|'+String(r.mrp||'');if(!merged[k])merged[k]={co:r.company,br:r.brand||'—',it:r.item_name,mrp:r.mrp||'—',qty:0,val:0};merged[k].qty+=Number(r.qty||0);merged[k].val+=Number(r.value||0);});rows=Object.values(merged).sort((a,b)=>(a.co+a.br+a.it).localeCompare(b.co+b.br+b.it)).map(r=>[r.co,r.br,r.it,r.mrp,r.qty,Number(r.val).toFixed(2)]);head=['Company','Brand','Item','MRP','Qty','Value'];const tq=rows.reduce((a,r)=>a+Number(r[4]||0),0);const tv=rows.reduce((a,r)=>a+Number(r[5]||0),0);rows.push(['','','','TOTAL',tq,Number(tv).toFixed(2)]);}
     else if(kind==='staff'){const {data}=await sb.from('v_mr_staff_time').select('*').order('day',{ascending:false}).limit(300);head=['Staff','Day','Actions','Working min'];rows=(data||[]).map(r=>[r.user_name||r.user_id,r.day,r.actions,r.working_minutes]);}
     else if(kind==='bag'){const {data}=await sb.from('mr_bags').select('*').neq('status','DELETED').neq('status','TEST').order('created_at',{ascending:false}).limit(300);head=['Bag','Status','Claim','Qty','Value'];rows=(data||[]).map(r=>[r.bag_no,r.status,r.claim_status,r.total_qty,r.total_value]);}
     else{let q=sb.from('mr_bags').select('*').eq('is_deleted',false).neq('status','TEST');
