@@ -307,7 +307,7 @@ function erpSuggest(q){pickedMaster=null;$('ieBrandView').value='';clearTimeout(
     try{const rp=await sb.rpc('mr_search_items',{p_company:cid,p_q:q});if(!rp.error)rows=rp.data||[];}catch(_){}
     if(!rows.length){let qq=sb.from('mr_item_master').select('*').eq('is_deleted',false).eq('is_active',true).ilike('item_name','%'+q+'%').limit(8);
       if(cid)qq=qq.eq('company_id',cid);const {data}=await qq;rows=data||[];}
-                                 if(rows.length<3&&cid){let qq2=sb.from('mr_item_master').select('*').eq('is_deleted',false).eq('is_active',true).ilike('item_name','%'+q+'%').limit(8);const {data:d2}=await qq2;const ids=new Set(rows.map(r=>r.id));(d2||[]).forEach(r=>{if(!ids.has(r.id))rows.push(r);});}
+
     let html=rows.map(r=>`<div class="it" style="cursor:pointer" onclick='pickMaster(${esc(JSON.stringify(r))})'><div class="nm"><b>${esc(r.item_name)}</b><small>${esc(brandName(r.brand_id))}${r.mrp?(' · ₹'+r.mrp):''}${r.is_approved?'':' · ⏳'}</small></div></div>`).join('');
     if(rows.length===0){ html+=`<div class="it" style="cursor:pointer;border-color:var(--cyan)" onclick="newItem()"><div class="nm"><b style="color:var(--cyan)">＋ Naya item add karo</b><small>"${esc(q)}" master mein nahi mila</small></div></div>`; }
     $('sugg').innerHTML=html;
