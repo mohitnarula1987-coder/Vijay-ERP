@@ -293,7 +293,6 @@ async function resumeBag(id){
   $('whReasonWrap')&&$('whReasonWrap').classList.toggle('hide',curSrc!=='WAREHOUSE_DAMAGE');
   clearRow();restoreDraft();renderItems();renderThumbs();$('ieItem').focus();toast('Bag '+b.bag_no+' resume ✓');
 }
-/* typed-row draft (crash safety) — items khud DB mein incremental save hote hain */
 function draftKey(){return 'mr-draft-'+(curBag?curBag.id:'none');}
 function saveDraft(){try{if(!curBag)return;const d={item:$('ieItem').value,qty:$('ieQty').value,mrp:$('ieMrp').value,brand:$('ieBrandView').value,master:pickedMaster};if(d.item||d.mrp)localStorage.setItem(draftKey(),JSON.stringify(d));else localStorage.removeItem(draftKey());}catch(_){}}
 function restoreDraft(){try{const raw=localStorage.getItem(draftKey());if(!raw)return;const d=JSON.parse(raw);if(d.item){$('ieItem').value=d.item;$('ieQty').value=d.qty||'1';$('ieMrp').value=d.mrp||'';$('ieBrandView').value=d.brand||'';pickedMaster=d.master||null;validateEntry();toast('Adhura row draft restore hua');}}catch(_){}}
@@ -303,13 +302,12 @@ function erpSuggest(q){pickedMaster=null;$('ieBrandView').value='';clearTimeout(
   if(!q||q.length<2){$('sugg').innerHTML='';return;}
   suggT=setTimeout(async()=>{try{const cid=curBag?curBag.company_id:null;
     let rows=[];
-    // true fuzzy (trigram) via RPC; fallback to ilike substring
     try{const rp=await sb.rpc('mr_search_items',{p_company:cid,p_q:q});if(!rp.error)rows=rp.data||[];}catch(_){}
     if(!rows.length){let qq=sb.from('mr_item_master').select('*').eq('is_deleted',false).eq('is_active',true).ilike('item_name','%'+q+'%').limit(8);
       if(cid)qq=qq.eq('company_id',cid);const {data}=await qq;rows=data||[];}
-                                 if(rows.length<3&&cid){let qq2=sb.from('mr_item_master').select('*').eq('is_deleted',false).eq('is_active',true).ilike('item_name','%'+q+'%').limit(8);const {data:d2}=await qq2;const ids=new Set(rows.map(r=>r.id));(d2||[]).forEach(r=>{if(!ids.has(r.id))rows.push(r);});}
+    if(rows.length<3&&cid){let qq2=sb.from('mr_item_master').select('*').eq('is_deleted',false).eq('is_active',true).ilike('item_name','%'+q+'%').limit(8);const {data:d2}=await qq2;const ids=new Set(rows.map(r=>r.id));(d2||[]).forEach(r=>{if(!ids.has(r.id))rows.push(r);});}
     let html=rows.map(r=>`<div class="it" style="cursor:pointer" onclick='pickMaster(${esc(JSON.stringify(r))})'><div class="nm"><b>${esc(r.item_name)}</b><small>${esc(brandName(r.brand_id))}${r.mrp?(' · ₹'+r.mrp):''}${r.is_approved?'':' · ⏳'}</small></div></div>`).join('');
-    if(rows.length===0){ html+=`<div class="it" style="cursor:pointer;border-color:var(--cyan)" onclick="newItem()"><div class="nm"><b style="color:var(--cyan)">＋ Naya item add karo</b><small>"${esc(q)}" master mein nahi mila</small></div></div>`; }
+    if(rows.length===0){html+=`<div class="it" style="cursor:pointer;border-color:var(--cyan)" onclick="newItem()"><div class="nm"><b style="color:var(--cyan)">＋ Naya item add karo</b><small>"${esc(q)}" master mein nahi mila</small></div></div>`;}
     $('sugg').innerHTML=html;
   }catch(e){$('sugg').innerHTML='';}},220);}
 function brandName(id){return (brands.find(b=>b.id===id)||{}).name||'';}
@@ -317,13 +315,11 @@ function pickMaster(r){pickedMaster=r;$('ieItem').value=r.item_name;let bn=brand
 async function newItem(){
   if(!curBag){toast('Bag nahi khula');return;}
   const name=($('ieItem').value||'').trim();if(!name){toast('Item naam likho');return;}
-  /* DUPLICATE/TYPO GUARD (issue #2,#9): close matches dikhao, confirm lo */
   try{const rp=await sb.rpc('mr_search_items',{p_company:curBag.company_id,p_q:name});const mm=(rp&&rp.data)||[];
     if(mm.length){const list=mm.slice(0,5).map(x=>'• '+x.item_name+(x.mrp?(' (Rs '+x.mrp+')'):'')).join('\n');
       if(!confirm('Milte-julte items pehle se hain:\n\n'+list+'\n\nInme se koi NAHI hai?\nOK = naya item banao\nCancel = upar list se sahi item chuno')){$('sugg').scrollIntoView({behavior:'smooth'});return;}}
   }catch(_){}
   const cid=curBag.company_id;
-  /* manual brand creation OFF (#4): naya item -> brand null; owner approve/merge mein assign karega */
   const mrp=parseFloat(prompt('MRP Rs (>0) — required:')||'0');if(!(mrp>0)){toast('MRP > 0 zaroori');return;}
   const brandOpts=brands.filter(b=>b.company_id===cid);let selBrandId=null;if(brandOpts.length>0){const bList=brandOpts.map((b,i)=>(i+1)+'. '+b.name).join('\n');const bChoice=prompt('Brand chuno:\n'+bList+'\n0. Baad mein');const bIdx=parseInt(bChoice||'0',10);if(bIdx>0&&bIdx<=brandOpts.length)selBrandId=brandOpts[bIdx-1].id;}
   const row=audit({company_id:cid,brand_id:selBrandId,item_name:name,normalized_name:norm(name),mrp:mrp,barcode:null,is_approved:(role==='OWNER')});
@@ -342,7 +338,7 @@ function clearRow(){$('ieItem').value='';$('ieBrandView').value='';$('ieQty').va
 async function saveItem(moveNext){
   if(!curBag){toast('Bag nahi khula');return;}
   if(!validateEntry())return;
-  if(window._saving)return;window._saving=true;$('saveBtn').disabled=true; /* #5 prevent duplicate submit */
+  if(window._saving)return;window._saving=true;$('saveBtn').disabled=true;
   const name=$('ieItem').value.trim();const qty=parseQty($('ieQty').value);const mrp=parseFloat($('ieMrp').value||0);
   const row=audit({bag_id:curBag.id,master_id:pickedMaster?pickedMaster.id:null,brand_id:pickedMaster?pickedMaster.brand_id:null,brand_name:pickedMaster?brandName(pickedMaster.brand_id):null,
     item_name:name,is_free_text:!pickedMaster,unit:'pcs',qty:qty,mrp:mrp,reason:(curSrc==='WAREHOUSE_DAMAGE'?($('ieReason').value||null):null),
@@ -352,7 +348,6 @@ async function saveItem(moveNext){
   const {data,error}=await sb.from('mr_items').insert(row).select().single();
   if(error){window._saving=false;toast('Error: '+error.message);return;}
   curItems.unshift(data);pushRecent({item_name:name,mrp:mrp,master:pickedMaster});
-  /* #4 last-MRP memory: master ka MRP latest pe update (override yaad rahe) */
   if(pickedMaster&&mrp>0&&Number(mrp)!==Number(pickedMaster.mrp)){sb.from('mr_item_master').update({mrp:mrp,updated_by_user_id:U.user_id,updated_by_name:U.user_name,updated_at:nowISO()}).eq('id',pickedMaster.id).then(()=>{});}
   logAct('ADD_ITEM','item',data.id,'Added '+name+' x'+qty);window._lastEntry='manual';
   window._saving=false;
@@ -389,7 +384,6 @@ function editItem(id){const it=curItems.find(x=>x.id===id);if(!it)return;
 async function saveItemEdit(id){const it=curItems.find(x=>x.id===id);if(!it)return;
   const nq=parseQty(($('edQty_'+id)||{}).value);const nm=parseFloat(($('edMrp_'+id)||{}).value);
   if(!(nq>0)){toast('Qty > 0 chahiye');return;}if(!(nm>0)){toast('MRP > 0 chahiye');return;}
-  // CONFLICT CHECK: kisi aur ne to nahi badla?
   const {data:fresh}=await sb.from('mr_items').select('qty,mrp,is_deleted').eq('id',id).single();
   if(!fresh||fresh.is_deleted){toast('⚠️ Item ab maujood nahi — refresh');editingId=null;await reloadBagItems();return;}
   if(Number(fresh.qty)!==Number(it.qty)||Number(fresh.mrp)!==Number(it.mrp)){toast('⚠️ Kisi aur ne ise badla — refresh ho raha');editingId=null;await reloadBagItems();return;}
@@ -461,9 +455,7 @@ async function makePDF(bag,items){try{
   const co=(companies.find(c=>c.id===bag.company_id)||{}).name||'';const tQ=items.reduce((a,i)=>a+Number(i.qty||0),0),tV=items.reduce((a,i)=>a+Number(i.amount||0),0);
   doc.setFontSize(16);doc.text('DAMAGE BAG LABEL',10,13);doc.setFontSize(20);doc.setTextColor(0,150,170);doc.text(String(bag.bag_no),10,23);doc.setTextColor(0,0,0);
   doc.setFontSize(10);doc.text('Company: '+co,10,32);doc.text('Source: '+bag.source_type.replace('_',' '),10,38);doc.text('Date: '+new Date().toLocaleString('en-IN'),10,44);doc.text('Total Qty: '+tQ,10,50);doc.text('Total Value: Rs '+tV.toFixed(2),10,56);
-  /* QR is OPTIONAL — never let it break the PDF (issue #4) */
   try{if(typeof QRCode!=='undefined'&&QRCode.toDataURL){const qr=await QRCode.toDataURL(location.origin+location.pathname+'?bag='+encodeURIComponent(bag.bag_no),{width:240,margin:1});doc.addImage(qr,'PNG',98,28,38,38);doc.setFontSize(7);doc.text('Scan = bag details',100,69);}}catch(qe){console.warn('QR skipped, PDF continues',qe);}
-  /* table also fail-safe -> fallback to plain lines */
   try{doc.autoTable({startY:62,head:[['Item','Qty','MRP','Amt']],body:(()=>{const m={};items.forEach(i=>{const k=i.item_name+'|||'+i.mrp;if(!m[k])m[k]={n:i.item_name,q:0,r:i.mrp,a:0};m[k].q+=Number(i.qty||0);m[k].a+=Number(i.amount||0);});return Object.values(m).map(x=>[x.n,x.q,x.r,x.a]);})(),styles:{fontSize:7},headStyles:{fillColor:[20,30,50]}});}
   catch(te){let y=66;doc.setFontSize(8);items.forEach(i=>{doc.text(String(i.item_name+' — '+i.qty+' x '+i.mrp+' = '+i.amount).slice(0,60),10,y);y+=5;});}
   doc.save(bag.bag_no+'.pdf');
@@ -471,7 +463,7 @@ async function makePDF(bag,items){try{
 function pillCls(s){return {OPEN:'p-open',CLOSED:'p-closed',TEST:'p-test',APPROVED:'p-approved',DELETED:'p-deleted'}[s]||'p-closed';}
 async function loadBags(){
   let q=sb.from('mr_bags').select('*').neq('status','DELETED').order('created_at',{ascending:false}).limit(100);
-  if(role==='STAFF')q=q.neq('status','TEST'); /* issue #3: staff sees only OPEN/CLOSED/APPROVED */
+  if(role==='STAFF')q=q.neq('status','TEST');
   if($('fSource').value)q=q.eq('source_type',$('fSource').value);if($('fStatus').value)q=q.eq('status',$('fStatus').value);
   const bn=$('fBagNo')&&$('fBagNo').value.trim();if(bn)q=q.ilike('bag_no','%'+bn+'%');
   const {data,error}=await q;if(error){toast(error.message);return;}
@@ -541,7 +533,20 @@ async function report(kind){
   try{
     if(kind==='company'){const {data}=await sb.from('v_mr_company_claim').select('*');head=['Company','Bags','Claimed','Settled','Variance'];rows=(data||[]).map(r=>[r.company,r.bags,r.claimed_value,r.settled_value,r.variance]);const tb=rows.reduce((a,r)=>a+Number(r[1]||0),0);const tc=rows.reduce((a,r)=>a+Number(r[2]||0),0);const ts=rows.reduce((a,r)=>a+Number(r[3]||0),0);rows.push(['GRAND TOTAL',tb,Number(tc).toFixed(2),Number(ts).toFixed(2),Number(tc-ts).toFixed(2)]);}
     else if(kind==='brand'){const {data}=await sb.from('v_mr_brand_damage').select('*');head=['Company','Brand','Qty','Value'];rows=(data||[]).map(r=>[r.company,r.brand||'—',r.qty,r.value]);const tq=rows.reduce((a,r)=>a+Number(r[2]||0),0);const tv=rows.reduce((a,r)=>a+Number(r[3]||0),0);rows.push(['','GRAND TOTAL',tq,Number(tv).toFixed(2)]);}
-    else if(kind==='item'){const {data}=await sb.from('v_mr_item_damage').select('*').order('value',{ascending:false}).limit(500);).replace(/elachi/g,'elaichi');const aliases={'tata tomato masala oats 33gm':'tata tomato masala oats 35gm','tata tea elachi 250gm':'tata tea elaichi 250gm'};return aliases[t]||tonst normStr=s=>(s||'').toLowerCase().trim().replace(/\s+/g,' ').replace(/elachi/g,'elaichi');const merged={};(data||[]).forEach(r=>{const k=(r.company||'')+'|'+(r.brand||'')+'|'+normStr(r.item_name)+'|'+String(r.mrp||'');if(!merged[k])merged[k]={co:r.company,br:r.brand||'—',it:r.item_name,mrp:r.mrp||'—',qty:0,val:0};merged[k].qty+=Number(r.qty||0);merged[k].val+=Number(r.value||0);});rows=Object.values(merged).sort((a,b)=>(a.co+a.br+a.it).localeCompare(b.co+b.br+b.it)).map(r=>[r.co,r.br,r.it,r.mrp,r.qty,Number(r.val).toFixed(2)]);head=['Company','Brand','Item','MRP','Qty','Value'];const tq=rows.reduce((a,r)=>a+Number(r[4]||0),0);const tv=rows.reduce((a,r)=>a+Number(r[5]||0),0);rows.push(['','','','TOTAL',tq,Number(tv).toFixed(2)]);}
+    else if(kind==='item'){
+      const {data}=await sb.from('v_mr_item_damage').select('*').order('value',{ascending:false}).limit(500);
+      const normStr=s=>{
+        let t=(s||'').toLowerCase().trim().replace(/\s+/g,' ').replace(/elachi/g,'elaichi');
+        const aliases={'tata tomato masala oats 33gm':'tata tomato masala oats 35gm','tata tea elachi 250gm':'tata tea elaichi 250gm'};
+        return aliases[t]||t;
+      };
+      const merged={};
+      (data||[]).forEach(r=>{const k=(r.company||'')+'|'+(r.brand||'')+'|'+normStr(r.item_name)+'|'+String(r.mrp||'');if(!merged[k])merged[k]={co:r.company,br:r.brand||'—',it:r.item_name,mrp:r.mrp||'—',qty:0,val:0};merged[k].qty+=Number(r.qty||0);merged[k].val+=Number(r.value||0);});
+      rows=Object.values(merged).sort((a,b)=>(a.co+a.br+a.it).localeCompare(b.co+b.br+b.it)).map(r=>[r.co,r.br,r.it,r.mrp,r.qty,Number(r.val).toFixed(2)]);
+      head=['Company','Brand','Item','MRP','Qty','Value'];
+      const tq=rows.reduce((a,r)=>a+Number(r[4]||0),0);const tv=rows.reduce((a,r)=>a+Number(r[5]||0),0);
+      rows.push(['','','','TOTAL',tq,Number(tv).toFixed(2)]);
+    }
     else if(kind==='staff'){const {data}=await sb.from('v_mr_staff_time').select('*').order('day',{ascending:false}).limit(300);head=['Staff','Day','Actions','Working min'];rows=(data||[]).map(r=>[r.user_name||r.user_id,r.day,r.actions,r.working_minutes]);}
     else if(kind==='bag'){const {data}=await sb.from('mr_bags').select('*').neq('status','DELETED').neq('status','TEST').order('created_at',{ascending:false}).limit(300);head=['Bag','Status','Claim','Qty','Value'];rows=(data||[]).map(r=>[r.bag_no,r.status,r.claim_status,r.total_qty,r.total_value]);}
     else{let q=sb.from('mr_bags').select('*').eq('is_deleted',false).neq('status','TEST');
@@ -610,17 +615,10 @@ async function loadDevices(){
     ${d.is_approved?`<button class="btn btn-sm btn-red" onclick="setDevice('${d.id}','${esc(d.user_mobile)}',false)">Revoke</button>`:`<button class="btn btn-sm btn-grn" onclick="setDevice('${d.id}','${esc(d.user_mobile)}',true)">Approve</button>`}</div>`).join('')||'<div class="muted">Koi device nahi</div>';
 }
 async function setDevice(id,mob,approve){if(role!=='OWNER'){toast('Sirf Owner');return;}
-  if(approve){await sb.from('mr_devices').update({is_approved:false}).eq('user_mobile',mob).neq('id',id);} // one approved device per user
+  if(approve){await sb.from('mr_devices').update({is_approved:false}).eq('user_mobile',mob).neq('id',id);}
   const up=approve?{is_approved:true,approved_by_user_id:U.user_id,approved_by_name:U.user_name,approved_at:nowISO()}:{is_approved:false};
   const {error}=await sb.from('mr_devices').update(up).eq('id',id);if(error){toast(error.message);return;}
   logAct(approve?'APPROVE_DEVICE':'REVOKE_DEVICE','device',id,(approve?'Approved':'Revoked')+' '+mob);loadDevices();toast(approve?'Approved ✓':'Revoked');}
 function switchTab(t){
   document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x.dataset.t===t));
-  ['entry','bags','reports','items','users'].forEach(p=>$('p-'+p).classList.toggle('hide',p!==t));
-  if(t==='bags')loadBags();if(t==='users')loadUsers();if(t==='items')loadMasterList('');
-}
-document.querySelectorAll('.tab').forEach(tab=>tab.addEventListener('click',()=>switchTab(tab.dataset.t)));
-boot();
-</script>
-</body>
-</html>
+  ['entry','bags','reports','items','users'].forEach(p=>$('p-'+p).classList.
