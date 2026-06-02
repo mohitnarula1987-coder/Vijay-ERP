@@ -309,8 +309,7 @@ function erpSuggest(q){pickedMaster=null;$('ieBrandView').value='';clearTimeout(
       if(cid)qq=qq.eq('company_id',cid);const {data}=await qq;rows=data||[];}
                                  if(rows.length<3&&cid){let qq2=sb.from('mr_item_master').select('*').eq('is_deleted',false).eq('is_active',true).ilike('item_name','%'+q+'%').limit(8);const {data:d2}=await qq2;const ids=new Set(rows.map(r=>r.id));(d2||[]).forEach(r=>{if(!ids.has(r.id))rows.push(r);});}
     let html=rows.map(r=>`<div class="it" style="cursor:pointer" onclick='pickMaster(${esc(JSON.stringify(r))})'><div class="nm"><b>${esc(r.item_name)}</b><small>${esc(brandName(r.brand_id))}${r.mrp?(' · ₹'+r.mrp):''}${r.is_approved?'':' · ⏳'}</small></div></div>`).join('');
-    // Always show new item option at bottom
-    html+=`<div class="it" style="cursor:pointer;border-color:var(--cyan);margin-top:4px" onclick="newItem()"><div class="nm"><b style="color:var(--cyan)">＋ "${esc(q)}" naya item banao</b><small>Upar list mein sahi item nahi mila</small></div></div>`;
+    if(rows.length===0){ html+=`<div class="it" style="cursor:pointer;border-color:var(--cyan)" onclick="newItem()"><div class="nm"><b style="color:var(--cyan)">＋ Naya item add karo</b><small>"${esc(q)}" master mein nahi mila</small></div></div>`; }
     $('sugg').innerHTML=html;
   }catch(e){$('sugg').innerHTML='';}},220);}
 function brandName(id){return (brands.find(b=>b.id===id)||{}).name||'';}
@@ -540,9 +539,9 @@ async function report(kind){
   const T={company:'Company-wise Claim',brand:'Brand-wise Damage',item:'Item-wise Damage',bag:'Bag-wise',pending:'Claim Pending',settled:'Claim Settled',opening:'Opening Damage',warehouse:'Warehouse Damage',market:'Market Return',staff:'Staff Productivity'};
   $('repTitle').textContent=T[kind];let head=[],rows=[];
   try{
-    if(kind==='company'){const {data}=await sb.from('v_mr_company_claim').select('*');head=['Company','Bags','Claimed','Settled','Variance'];rows=(data||[]).map(r=>[r.company,r.bags,r.claimed_value,r.settled_value,r.variance]);}
-    else if(kind==='brand'){const {data}=await sb.from('v_mr_brand_damage').select('*');head=['Company','Brand','Qty','Value'];rows=(data||[]).map(r=>[r.company,r.brand||'—',r.qty,r.value]);}
-    else if(kind==='item'){const {data}=await sb.from('v_mr_item_damage').select('*').order('value',{ascending:false}).limit(500);head=['Company','Item','Qty','Value'];rows=(data||[]).map(r=>[r.company,r.item_name,r.qty,r.value]);}
+    if(kind==='company'){const {data}=await sb.from('v_mr_company_claim').select('*');head=['Company','Bags','Claimed','Settled','Variance'];rows=(data||[]).map(r=>[r.company,r.bags,r.claimed_value,r.settled_value,r.variance]);const tb=rows.reduce((a,r)=>a+Number(r[1]||0),0);const tc=rows.reduce((a,r)=>a+Number(r[2]||0),0);const ts=rows.reduce((a,r)=>a+Number(r[3]||0),0);rows.push(['GRAND TOTAL',tb,Number(tc).toFixed(2),Number(ts).toFixed(2),Number(tc-ts).toFixed(2)]);}
+    else if(kind==='brand'){const {data}=await sb.from('v_mr_brand_damage').select('*');head=['Company','Brand','Qty','Value'];rows=(data||[]).map(r=>[r.company,r.brand||'—',r.qty,r.value]);const tq=rows.reduce((a,r)=>a+Number(r[2]||0),0);const tv=rows.reduce((a,r)=>a+Number(r[3]||0),0);rows.push(['','GRAND TOTAL',tq,Number(tv).toFixed(2)]);}
+    else if(kind==='item'){const {data}=await sb.from('v_mr_item_damage').select('*').order('value',{ascending:false}).limit(500);head=['Company','Brand','Item','MRP','Qty','Value'];rows=(data||[]).map(r=>[r.company,r.brand||'—',r.item_name,r.mrp||'—',r.qty,r.value]);const tq=rows.reduce((a,r)=>a+Number(r[4]||0),0);const tv=rows.reduce((a,r)=>a+Number(r[5]||0),0);rows.push(['','','','TOTAL',tq,Number(tv).toFixed(2)]);}
     else if(kind==='staff'){const {data}=await sb.from('v_mr_staff_time').select('*').order('day',{ascending:false}).limit(300);head=['Staff','Day','Actions','Working min'];rows=(data||[]).map(r=>[r.user_name||r.user_id,r.day,r.actions,r.working_minutes]);}
     else if(kind==='bag'){const {data}=await sb.from('mr_bags').select('*').neq('status','DELETED').neq('status','TEST').order('created_at',{ascending:false}).limit(300);head=['Bag','Status','Claim','Qty','Value'];rows=(data||[]).map(r=>[r.bag_no,r.status,r.claim_status,r.total_qty,r.total_value]);}
     else{let q=sb.from('mr_bags').select('*').eq('is_deleted',false).neq('status','TEST');
