@@ -307,13 +307,14 @@ function erpSuggest(q){pickedMaster=null;$('ieBrandView').value='';clearTimeout(
     try{const rp=await sb.rpc('mr_search_items',{p_company:cid,p_q:q});if(!rp.error)rows=rp.data||[];}catch(_){}
     if(!rows.length){let qq=sb.from('mr_item_master').select('*').eq('is_deleted',false).eq('is_active',true).ilike('item_name','%'+q+'%').limit(8);
       if(cid)qq=qq.eq('company_id',cid);const {data}=await qq;rows=data||[];}
-
+                                 if(rows.length<3&&cid){let qq2=sb.from('mr_item_master').select('*').eq('is_deleted',false).eq('is_active',true).ilike('item_name','%'+q+'%').limit(8);const {data:d2}=await qq2;const ids=new Set(rows.map(r=>r.id));(d2||[]).forEach(r=>{if(!ids.has(r.id))rows.push(r);});}
     let html=rows.map(r=>`<div class="it" style="cursor:pointer" onclick='pickMaster(${esc(JSON.stringify(r))})'><div class="nm"><b>${esc(r.item_name)}</b><small>${esc(brandName(r.brand_id))}${r.mrp?(' · ₹'+r.mrp):''}${r.is_approved?'':' · ⏳'}</small></div></div>`).join('');
-    if(rows.length===0){ html+=`<div class="it" style="cursor:pointer;border-color:var(--cyan)" onclick="newItem()"><div class="nm"><b style="color:var(--cyan)">＋ Naya item add karo</b><small>"${esc(q)}" master mein nahi mila</small></div></div>`; }
+    // Always show new item option at bottom
+    html+=`<div class="it" style="cursor:pointer;border-color:var(--cyan);margin-top:4px" onclick="newItem()"><div class="nm"><b style="color:var(--cyan)">＋ "${esc(q)}" naya item banao</b><small>Upar list mein sahi item nahi mila</small></div></div>`;
     $('sugg').innerHTML=html;
   }catch(e){$('sugg').innerHTML='';}},220);}
 function brandName(id){return (brands.find(b=>b.id===id)||{}).name||'';}
-function pickMaster(r){pickedMaster=r;$('ieItem').value=r.item_name;let bn=brandName(r.brand_id);if(!bn){const nm=r.item_name.toLowerCase();const infer=brands.find(b=>b.name&&nm.includes(b.name.toLowerCase()));if(infer){pickedMaster=Object.assign({},r,{brand_id:infer.id});bn=infer.name;sb.from('mr_item_master').update({brand_id:infer.id}).eq('id',r.id).then(()=>{});}}$('ieBrandView').value=bn;if(r.mrp)$('ieMrp').value=r.mrp;$('sugg').innerHTML='';validateEntry();$('ieQty').focus();}
+function pickMaster(r){pickedMaster=r;$('ieItem').value=r.item_name;$('ieBrandView').value=brandName(r.brand_id);if(r.mrp)$('ieMrp').value=r.mrp;$('sugg').innerHTML='';validateEntry();$('ieQty').focus();}
 async function newItem(){
   if(!curBag){toast('Bag nahi khula');return;}
   const name=($('ieItem').value||'').trim();if(!name){toast('Item naam likho');return;}
@@ -326,7 +327,7 @@ async function newItem(){
   /* manual brand creation OFF (#4): naya item -> brand null; owner approve/merge mein assign karega */
   const mrp=parseFloat(prompt('MRP Rs (>0) — required:')||'0');if(!(mrp>0)){toast('MRP > 0 zaroori');return;}
   const brandOpts=brands.filter(b=>b.company_id===cid);let selBrandId=null;if(brandOpts.length>0){const bList=brandOpts.map((b,i)=>(i+1)+'. '+b.name).join('\n');const bChoice=prompt('Brand chuno:\n'+bList+'\n0. Baad mein');const bIdx=parseInt(bChoice||'0',10);if(bIdx>0&&bIdx<=brandOpts.length)selBrandId=brandOpts[bIdx-1].id;}
-  const row=audit({company_id:cid,brand_id:selBrandId,item_name:name,normalized_name:norm(name),mrp:mrp,barcode:null,is_approved:(role==='OWNER')});
+  const row=audit({company_id:cid,brand_id:null,item_name:name,normalized_name:norm(name),mrp:mrp,barcode:null,is_approved:(role==='OWNER')});
   const {data,error}=await sb.from('mr_item_master').insert(row).select().single();
   if(error){toast('Master error: '+error.message);return;}
   logAct('ADD_ITEM_MASTER','item_master',data.id,'New master '+name);pickMaster(data);toast('Item saved ✓'+(data.is_approved?'':' (approval pending)'));
