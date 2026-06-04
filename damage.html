@@ -181,10 +181,37 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
       <div id="repBody" style="margin-top:10px"></div></div>
   </section>
   <section id="p-items" class="hide">
-    <div class="card"><h3>Item Master</h3><input id="imSearch" placeholder="Search item…" oninput="loadMasterList(this.value)">
+    <div class="card"><h3>Item Master</h3>
+      <div class="row" style="gap:8px;align-items:center">
+        <input id="imSearch" placeholder="Search item…" oninput="loadMasterList(this.value)" style="flex:1">
+        <button class="btn btn-cyan btn-sm tab-owner" id="newItemBtn" onclick="openNewItemModal()" style="flex:0 0 auto;white-space:nowrap">＋ New Item</button>
+      </div>
       <p class="muted" style="margin-top:6px">Edit MRP · Disable · Approve (pending) · Merge duplicates</p></div>
     <div id="masterList"></div>
   </section>
+
+  <!-- New Item Modal -->
+  <div id="newItemModal" class="ov">
+    <div class="sheet" style="border-radius:18px 18px 0 0;max-width:560px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+        <b style="font-size:18px">＋ New Item</b>
+        <button class="btn btn-sm" style="margin-left:auto" onclick="closeNewItemModal()">✕</button>
+      </div>
+      <div id="niDupWarn" class="notice hide" style="margin-bottom:10px"></div>
+      <label>Company *</label>
+      <select id="niCompany"></select>
+      <label>Item Name *</label>
+      <input id="niName" placeholder="e.g. tata haldi powder 200gm" oninput="niCheckDup()">
+      <label>Brand</label>
+      <select id="niBrand"><option value="">— Select Brand —</option></select>
+      <div class="row">
+        <div><label>MRP ₹ *</label><input id="niMrp" type="number" inputmode="decimal" placeholder="0"></div>
+        <div><label>Barcode (optional)</label><input id="niBarcode" placeholder="scan or type"></div>
+      </div>
+      <div class="err" id="niErr" style="margin-top:6px"></div>
+      <button class="btn btn-cyan btn-block" style="margin-top:12px" onclick="saveNewItem()">Save Item ✓</button>
+    </div>
+  </div>
   <section id="p-users" class="hide">
     <div id="bootNotice" class="notice hide">Setup mode: koi user nahi. Aap (owner) users add karein.</div>
     <div class="card"><h3>Add / Update User</h3>
@@ -558,6 +585,52 @@ function exportXlsx(){if(!lastReport.head.length){toast('Pehle report kholo');re
 function exportPdf(){if(!lastReport.head.length){toast('Pehle report kholo');return;}
   const {jsPDF}=window.jspdf;const doc=new jsPDF();doc.setFontSize(14);doc.text(lastReport.title,14,16);
   doc.autoTable({startY:22,head:[lastReport.head],body:lastReport.rows,styles:{fontSize:8},headStyles:{fillColor:[20,30,50]}});doc.save((lastReport.title||'report').replace(/\s+/g,'_')+'.pdf');logAct('EXPORT','report',null,'PDF: '+lastReport.title);}
+let niDupTimer=null;
+function openNewItemModal(){
+  if(role!=='OWNER'){toast('Sirf Owner naya item bana sakta hai');return;}
+  $('niCompany').innerHTML=companies.map(x=>`<option value="${esc(x.id)}">${esc(x.name)}</option>`).join('');
+  $('niBrand').innerHTML='<option value="">— Select Brand —</option>'+brands.map(x=>`<option value="${esc(x.id)}">${esc(x.name)}</option>`).join('');
+  $('niName').value='';$('niMrp').value='';$('niBarcode').value='';$('niErr').textContent='';$('niDupWarn').classList.add('hide');
+  $('newItemModal').classList.add('show');
+  setTimeout(()=>$('niName').focus(),100);
+}
+function closeNewItemModal(){$('newItemModal').classList.remove('show');}
+function niCheckDup(){
+  clearTimeout(niDupTimer);
+  const q=($('niName').value||'').trim();
+  if(q.length<3){$('niDupWarn').classList.add('hide');return;}
+  niDupTimer=setTimeout(async()=>{
+    try{
+      const {data}=await sb.from('mr_item_master').select('item_name,mrp').eq('is_deleted',false).ilike('item_name','%'+q+'%').limit(5);
+      if(data&&data.length){
+        const exact=data.find(x=>x.item_name.toLowerCase().trim()===q.toLowerCase().trim());
+        if(exact){$('niDupWarn').textContent='⚠️ Yeh item already exist karta hai: "'+exact.item_name+'" (₹'+exact.mrp+')';$('niDupWarn').classList.remove('hide');}
+        else{$('niDupWarn').textContent='ℹ️ Similar items: '+data.map(x=>x.item_name).join(', ');$('niDupWarn').classList.remove('hide');}
+      }else{$('niDupWarn').classList.add('hide');}
+    }catch(_){}
+  },400);
+}
+async function saveNewItem(){
+  if(role!=='OWNER'){toast('Sirf Owner');return;}
+  const name=($('niName').value||'').trim();
+  const mrp=parseFloat($('niMrp').value||0);
+  const cid=$('niCompany').value;
+  const bid=$('niBrand').value||null;
+  const barcode=($('niBarcode').value||'').trim()||null;
+  if(!name){$('niErr').textContent='Item naam zaroori hai';return;}
+  if(!(mrp>0)){$('niErr').textContent='MRP > 0 zaroori hai';return;}
+  if(!cid){$('niErr').textContent='Company chuno';return;}
+  // Exact duplicate check
+  const {data:exist}=await sb.from('mr_item_master').select('id').eq('is_deleted',false).ilike('item_name',name).limit(1);
+  if(exist&&exist.length){$('niErr').textContent='Yeh exact item already exist karta hai!';return;}
+  const row=audit({company_id:cid,brand_id:bid,item_name:name,normalized_name:norm(name),mrp:mrp,barcode:barcode,is_active:true,is_approved:true,approved_by_user_id:U.user_id,approved_by_name:U.user_name,approved_at:nowISO()});
+  const {data,error}=await sb.from('mr_item_master').insert(row).select().single();
+  if(error){$('niErr').textContent=error.message;return;}
+  logAct('ADD_ITEM_MASTER','item_master',data.id,'Owner created: '+name);
+  closeNewItemModal();
+  loadMasterList('');
+  toast('✓ "'+name+'" add ho gaya — ab Entry mein search karega!');
+}
 async function loadMasterList(q){
   let qq=sb.from('mr_item_master').select('*').eq('is_deleted',false).order('item_name').limit(200);
   if(q&&q.trim())qq=qq.ilike('item_name','%'+q.trim()+'%');
