@@ -1,40 +1,38 @@
-# PHASE-1 SCOPE — DAMAGE MODULE
+# PHASE-1 SCOPE
 
-Status: DRAFT
+Status: PLANNING ONLY
 
 Goal:
-Preserve and improve DAMAGE workflow only.
+Build DAMAGE module only.
 
-Current State:
-- DAMAGE data is real
-- Stock is demo
-- Multi-PC URL use exists
-- PCs may shut down unexpectedly
+IN SCOPE
+- Damage entry
+- Damage list
+- Damage edit
+- Damage reports
+- Multi-PC use
+- Supabase persistence
+- Recovery after shutdown
 
-Scope:
-1. Damage Entry
-2. Damage History
-3. Damage Edit / Correction
-4. Damage Reports
-5. Data persistence
-6. Multi-user access
-
-Not In Scope:
-- Stock management
+OUT OF SCOPE
+- Stock
 - Opening balance
-- Migration
 - Purchase
-- Sales
-- GoFrugal integration
+- Sale
+- Migration
+- Inventory valuation
 
-Questions To Resolve:
-- Who creates damage entry?
-- Can damage be edited?
-- Need approval or not?
-- Need export or not?
-- Need photo upload or not?
+Rules
+1. Existing damage.html remains base.
+2. No destructive changes.
+3. Production DAMAGE preserved.
+4. Demo stock ignored.
 
-Status:
-Planning only.
-No build.
-No testing.
+Deliverables
+P1-D1 Requirements freeze
+P1-D2 Screen map
+P1-D3 Data model
+P1-D4 Build approval
+
+Exit:
+No coding starts from this document.
