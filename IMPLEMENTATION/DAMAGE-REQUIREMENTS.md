@@ -1,63 +1,62 @@
 # DAMAGE REQUIREMENTS
 
-Status: DRAFT
+Status: APPROVED FOR DESIGN
 
-## R1. Entry
-Who enters damage?
-[ ] Staff
-[ ] Admin
-[ ] Both
+## Scope
+Only DAMAGE module.
+No stock migration.
+No opening balance.
+No purchase/sale flow.
 
-## R2. Edit
-Can damage be edited?
-[ ] Yes
-[ ] No
-Rules:
-________________
+## Source of Truth
+Production DAMAGE data only.
 
-## R3. Approval
-Need approval?
-[ ] No
-[ ] Yes
+## Entry
+Who enters?
+[X] Staff
+[X] Admin
 
-If yes:
-[ ] Staff → Admin
-[ ] Admin only
+## Edit Rules
+Editable:
+- Same day only
 
-## R4. Photo
-Need photo proof?
-[ ] Yes
-[ ] No
+Locked:
+- Previous dates
 
-## R5. Fields
-Required:
+## Approval
+[X] No approval required
+
+## Photo
+[X] No
+
+## Required Fields
 - Date
 - Item
 - Qty
 - Reason
+- User
 
-Optional:
-________________
+## Reports
+[X] Daily
+[X] Monthly
+[X] User wise
 
-## R6. Reports
-Need:
-[ ] Daily
-[ ] Weekly
-[ ] Monthly
-[ ] Item wise
-[ ] User wise
-
-## R7. Multi-PC
-Expected:
+## Multi-PC
+Required:
 - Same URL
-- Same data visible
+- Shared data
 - Auto save
 
-## R8. Restore
+## Failure Recovery
 If PC closes:
-Expected:
-________________
+- Data must remain
+- Continue from any PC
 
-Status:
-Requirement capture only.
-No coding.
+## Out of Scope
+- Stock
+- Opening
+- Migration
+- Demo qty
+
+Decision:
+DAMAGE ONLY
