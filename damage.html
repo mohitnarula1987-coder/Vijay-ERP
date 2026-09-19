@@ -763,6 +763,7 @@ async function report(kind){
       if(!map[key]){
         map[key]={
           item:i.item_name||'Unnamed',
+          mrp:Number(i.mrp||0),
           brand:i.brand_name||'No Brand',
           bags:new Set(),
           qty:0,
@@ -777,13 +778,13 @@ async function report(kind){
 
     head=kind==='brand'
       ? ['Brand','Bags','Qty','Value']
-      : ['Item','Brand','Bags','Qty','Value'];
+      : ['Item','Brand','MRP','Bags','Qty','Value'];
 
     rows=Object.values(map)
       .sort((a,b)=>b.value-a.value)
       .map(x=>kind==='brand'
         ? [x.brand,x.bags.size,x.qty,x.value]
-        : [x.item,x.brand,x.bags.size,x.qty,x.value]);
+        : [x.item,x.brand,x.mrp,x.bags.size,x.qty,x.value]);
   }
 }
 
