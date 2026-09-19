@@ -760,7 +760,7 @@ async function report(kind){
       '<div class="muted">Error: '+esc(e.message||e)+'</div>';
   }
 }
-}
+
 function renderReport(){const {head,rows}=lastReport;
   $('repBody').innerHTML=`<table><thead><tr>${head.map(h=>`<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map((c,i)=>`<td${i>1?' class="r"':''}>${esc(c)}</td>`).join('')}</tr>`).join('')||`<tr><td colspan="${head.length}" class="muted">Koi data nahi</td></tr>`}</tbody></table>`;}
 function exportXlsx(){if(!lastReport.head.length){toast('Pehle report kholo');return;}
