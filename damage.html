@@ -735,13 +735,84 @@ async function report(kind){
       ]);
     }
 
-    else if(kind==='brand' || kind==='item' || kind==='staff'){
-      $('repBody').innerHTML=
-        '<div class="muted">Is report ki existing detailed view ko date-wise filter karne ke liye us view ke date field ki confirmation chahiye. Baaki reports selected period par filter ho gaye hain.</div>';
-      lastReport={title:names[kind],head:[],rows:[]};
-      return;
+    else if(kind==='brand' || kind==='item'){
+  const bagIds=bags.map(b=>b.id);
+
+  if(!bagIds.length){
+    head=kind==='brand'
+      ? ['Brand','Bags','Qty','Value']
+      : ['Item','Brand','Bags','Qty','Value'];
+    rows=[];
+  }else{
+    const {data:items,error:itemError}=await sb
+      .from('mr_items')
+      .select('*')
+      .in('bag_id',bagIds)
+      .eq('is_deleted',false)
+      .limit(10000);
+
+    if(itemError) throw itemError;
+
+    const map={};
+
+    (items||[]).forEach(i=>{
+      const key=kind==='brand'
+        ? (i.brand_name||'No Brand')
+        : ((i.item_name||'Unnamed')+'||'+(i.brand_name||''));
+
+      if(!map[key]){
+        map[key]={
+          item:i.item_name||'Unnamed',
+          brand:i.brand_name||'No Brand',
+          bags:new Set(),
+          qty:0,
+          value:0
+        };
+      }
+
+      map[key].bags.add(i.bag_id);
+      map[key].qty+=Number(i.qty||0);
+      map[key].value+=Number(i.amount||0);
+    });
+
+    head=kind==='brand'
+      ? ['Brand','Bags','Qty','Value']
+      : ['Item','Brand','Bags','Qty','Value'];
+
+    rows=Object.values(map)
+      .sort((a,b)=>b.value-a.value)
+      .map(x=>kind==='brand'
+        ? [x.brand,x.bags.size,x.qty,x.value]
+        : [x.item,x.brand,x.bags.size,x.qty,x.value]);
+  }
+}
+
+else if(kind==='staff'){
+  const map={};
+
+  bags.forEach(b=>{
+    const name=b.created_by_name||'Unknown';
+
+    if(!map[name]){
+      map[name]={bags:0,qty:0,value:0};
     }
 
+    map[name].bags++;
+    map[name].qty+=Number(b.total_qty||0);
+    map[name].value+=Number(b.total_value||0);
+  });
+
+  head=['Staff','Bags','Qty','Value'];
+
+  rows=Object.entries(map)
+    .sort((a,b)=>b[1].value-a[1].value)
+    .map(([name,x])=>[
+      name,
+      x.bags,
+      x.qty,
+      x.value
+    ]);
+}
     else{
       $('repBody').innerHTML='<div class="muted">Report type not supported.</div>';
       return;
