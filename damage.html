@@ -562,21 +562,204 @@ async function deleteBag(id,no){if(!can('delete')){toast('Permission nahi');retu
   if(!upd||!upd.length){toast('⚠️ Bag approved/deleted ho chuka — delete nahi hoga');closeSheet();loadBags();return;}
   logAct('DELETE_BAG','bag',id,'Deleted '+no+' — '+reason.trim());closeSheet();loadBags();toast('Bag deleted');}
 async function report(kind){
-  $('repOut').classList.remove('hide');$('repBody').innerHTML='Loading…';
-  const T={company:'Company-wise Claim',brand:'Brand-wise Damage',item:'Item-wise Damage',bag:'Bag-wise',pending:'Claim Pending',settled:'Claim Settled',opening:'Opening Damage',warehouse:'Warehouse Damage',market:'Market Return',staff:'Staff Productivity'};
-  $('repTitle').textContent=T[kind];let head=[],rows=[];
+  $('repOut').classList.remove('hide');
+  $('repBody').innerHTML='Loading...';
+
+  const names={
+    company:'Company-wise',
+    brand:'Brand-wise Damage',
+    item:'Item-wise Damage',
+    bag:'Bag-wise',
+    pending:'Claim Pending',
+    settled:'Claim Settled',
+    opening:'Opening Damage',
+    warehouse:'Warehouse Damage',
+    market:'Market Return',
+    staff:'Staff Productivity'
+  };
+
+  $('repTitle').textContent=names[kind]||kind;
+
+  const from=prompt('From Date (YYYY-MM-DD):','2026-09-19');
+  if(!from){
+    $('repBody').innerHTML='';
+    return;
+  }
+
+  const to=prompt('To Date (YYYY-MM-DD):',from);
+  if(!to){
+    $('repBody').innerHTML='';
+    return;
+  }
+
+  if(from>to){
+    toast('From Date, To Date se bada nahi ho sakta');
+    $('repBody').innerHTML='';
+    return;
+  }
+
   try{
-    if(kind==='company'){const {data}=await sb.from('v_mr_company_claim').select('*');head=['Company','Bags','Claimed','Settled','Variance'];rows=(data||[]).map(r=>[r.company,r.bags,r.claimed_value,r.settled_value,r.variance]);const tb=rows.reduce((a,r)=>a+Number(r[1]||0),0);const tc=rows.reduce((a,r)=>a+Number(r[2]||0),0);const ts=rows.reduce((a,r)=>a+Number(r[3]||0),0);rows.push(['GRAND TOTAL',tb,Number(tc).toFixed(2),Number(ts).toFixed(2),Number(tc-ts).toFixed(2)]);}
-    else if(kind==='brand'){const {data}=await sb.from('v_mr_brand_damage').select('*');head=['Company','Brand','Qty','Value'];rows=(data||[]).map(r=>[r.company,r.brand||'—',r.qty,r.value]);const tq=rows.reduce((a,r)=>a+Number(r[2]||0),0);const tv=rows.reduce((a,r)=>a+Number(r[3]||0),0);rows.push(['','GRAND TOTAL',tq,Number(tv).toFixed(2)]);}
-    else if(kind==='item'){const {data}=await sb.from('v_mr_item_damage').select('*').order('value',{ascending:false}).limit(500);const normStr=s=>(s||'').toLowerCase().trim().replace(/\s+/g,' ').replace(/elachi/g,'elaichi');const merged={};(data||[]).forEach(r=>{const k=(r.company||'')+'|'+(r.brand||'')+'|'+normStr(r.item_name)+'|'+String(r.mrp||'');if(!merged[k])merged[k]={co:r.company,br:r.brand||'—',it:r.item_name,mrp:r.mrp||'—',qty:0,val:0};merged[k].qty+=Number(r.qty||0);merged[k].val+=Number(r.value||0);});rows=Object.values(merged).sort((a,b)=>(a.co+a.br+a.it).localeCompare(b.co+b.br+b.it)).map(r=>[r.co,r.br,r.it,r.mrp,r.qty,Number(r.val).toFixed(2)]);head=['Company','Brand','Item','MRP','Qty','Value'];const tq=rows.reduce((a,r)=>a+Number(r[4]||0),0);const tv=rows.reduce((a,r)=>a+Number(r[5]||0),0);rows.push(['','','','TOTAL',tq,Number(tv).toFixed(2)]);}
-    else if(kind==='staff'){const {data}=await sb.from('v_mr_staff_time').select('*').order('day',{ascending:false}).limit(300);head=['Staff','Day','Actions','Working min'];rows=(data||[]).map(r=>[r.user_name||r.user_id,r.day,r.actions,r.working_minutes]);}
-    else if(kind==='bag'){const {data}=await sb.from('mr_bags').select('*').neq('status','DELETED').neq('status','TEST').order('created_at',{ascending:false}).limit(300);head=['Bag','Status','Claim','Qty','Value'];rows=(data||[]).map(r=>[r.bag_no,r.status,r.claim_status,r.total_qty,r.total_value]);}
-    else{let q=sb.from('mr_bags').select('*').eq('is_deleted',false).neq('status','TEST');
-      if(kind==='pending')q=q.eq('claim_status','PENDING');if(kind==='settled')q=q.eq('claim_status','SETTLED');
-      if(kind==='opening')q=q.eq('source_type','OPENING_DAMAGE');if(kind==='warehouse')q=q.eq('source_type','WAREHOUSE_DAMAGE');if(kind==='market')q=q.eq('source_type','MARKET_RETURN');
-      const {data}=await q.order('created_at',{ascending:false}).limit(300);head=['Bag','Company','Qty','Value','Claim'];rows=(data||[]).map(r=>[r.bag_no,(companies.find(c=>c.id===r.company_id)||{}).name||'',r.total_qty,r.total_value,r.claim_status]);}
-    lastReport={title:T[kind],head,rows};renderReport();
-  }catch(e){$('repBody').innerHTML='<div class="muted">Error: '+esc(e.message||e)+'</div>';}
+    const endDate=new Date(to+'T00:00:00');
+    endDate.setDate(endDate.getDate()+1);
+
+    const endISO=
+      endDate.getFullYear()+'-'+
+      String(endDate.getMonth()+1).padStart(2,'0')+'-'+
+      String(endDate.getDate()).padStart(2,'0');
+
+    const {data,error}=await sb
+      .from('mr_bags')
+      .select('*')
+      .gte('created_at',from+'T00:00:00')
+      .lt('created_at',endISO+'T00:00:00')
+      .neq('status','DELETED')
+      .neq('status','TEST')
+      .order('created_at',{ascending:true})
+      .limit(5000);
+
+    if(error) throw error;
+
+    const bags=data||[];
+
+    /* Report-local numbering:
+       selected period ka first bag = Bag 1
+       database ka original BAG-000042 etc. unchanged */
+    const reportNo={};
+    bags.forEach((b,i)=>{
+      reportNo[b.id]='Bag '+(i+1);
+    });
+
+    let head=[];
+    let rows=[];
+
+    if(kind==='bag'){
+      head=['Bag','System Bag','Date','Status','Claim','Qty','Value'];
+
+      rows=bags.map(b=>[
+        reportNo[b.id],
+        b.bag_no||'',
+        b.created_at?new Date(b.created_at).toLocaleString('en-IN'):'',
+        b.status||'',
+        b.claim_status||'',
+        b.total_qty||0,
+        b.total_value||0
+      ]);
+    }
+
+    else if(kind==='pending'){
+      const x=bags.filter(b=>String(b.claim_status||'').toUpperCase()==='PENDING');
+
+      head=['Bag','System Bag','Date','Claim','Qty','Value'];
+
+      rows=x.map(b=>[
+        reportNo[b.id],
+        b.bag_no||'',
+        b.created_at?new Date(b.created_at).toLocaleString('en-IN'):'',
+        b.claim_status||'',
+        b.total_qty||0,
+        b.total_value||0
+      ]);
+    }
+
+    else if(kind==='settled'){
+      const x=bags.filter(b=>{
+        const s=String(b.claim_status||'').toUpperCase();
+        return s==='SETTLED';
+      });
+
+      head=['Bag','System Bag','Date','Claim','Qty','Value'];
+
+      rows=x.map(b=>[
+        reportNo[b.id],
+        b.bag_no||'',
+        b.created_at?new Date(b.created_at).toLocaleString('en-IN'):'',
+        b.claim_status||'',
+        b.total_qty||0,
+        b.total_value||0
+      ]);
+    }
+
+    else if(kind==='opening' || kind==='warehouse' || kind==='market'){
+      const sourceMap={
+        opening:'OPENING_DAMAGE',
+        warehouse:'WAREHOUSE_DAMAGE',
+        market:'MARKET_RETURN'
+      };
+
+      const x=bags.filter(b=>
+        String(b.source_type||'').toUpperCase()===sourceMap[kind]
+      );
+
+      head=['Bag','System Bag','Date','Source','Status','Claim','Qty','Value'];
+
+      rows=x.map(b=>[
+        reportNo[b.id],
+        b.bag_no||'',
+        b.created_at?new Date(b.created_at).toLocaleString('en-IN'):'',
+        b.source_type||'',
+        b.status||'',
+        b.claim_status||'',
+        b.total_qty||0,
+        b.total_value||0
+      ]);
+    }
+
+    else if(kind==='company'){
+      const map={};
+
+      bags.forEach(b=>{
+        const id=b.company_id||'NO-COMPANY';
+
+        if(!map[id]){
+          const c=companies.find(x=>x.id===b.company_id);
+          map[id]={
+            company:c?.name||'Unknown',
+            bags:0,
+            qty:0,
+            value:0
+          };
+        }
+
+        map[id].bags++;
+        map[id].qty+=Number(b.total_qty||0);
+        map[id].value+=Number(b.total_value||0);
+      });
+
+      head=['Company','Bags','Qty','Value'];
+
+      rows=Object.values(map).map(x=>[
+        x.company,
+        x.bags,
+        x.qty,
+        x.value
+      ]);
+    }
+
+    else if(kind==='brand' || kind==='item' || kind==='staff'){
+      $('repBody').innerHTML=
+        '<div class="muted">Is report ki existing detailed view ko date-wise filter karne ke liye us view ke date field ki confirmation chahiye. Baaki reports selected period par filter ho gaye hain.</div>';
+      lastReport={title:names[kind],head:[],rows:[]};
+      return;
+    }
+
+    else{
+      $('repBody').innerHTML='<div class="muted">Report type not supported.</div>';
+      return;
+    }
+
+    lastReport={
+      title:names[kind]+' | '+from+' to '+to,
+      head,
+      rows
+    };
+
+    renderReport();
+
+  }catch(e){
+    $('repBody').innerHTML=
+      '<div class="muted">Error: '+esc(e.message||e)+'</div>';
+  }
+}
 }
 function renderReport(){const {head,rows}=lastReport;
   $('repBody').innerHTML=`<table><thead><tr>${head.map(h=>`<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map((c,i)=>`<td${i>1?' class="r"':''}>${esc(c)}</td>`).join('')}</tr>`).join('')||`<tr><td colspan="${head.length}" class="muted">Koi data nahi</td></tr>`}</tbody></table>`;}
